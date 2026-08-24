@@ -1,0 +1,78 @@
+{
+	"pages": [
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationStyle": "custom",
+				"pageOrientation": "landscape",
+				"disableScroll": true
+			}
+		},
+		{
+			"path": "pages/lobby/lobby",
+			"style": {
+				"navigationStyle": "custom",
+				"pageOrientation": "landscape",
+				"disableScroll": true
+			}
+		},
+		{
+			"path": "pages/room/room",
+			"style": {
+				"navigationStyle": "custom",
+				"pageOrientation": "landscape",
+				"disableScroll": true
+			}
+		},
+		{
+			"path": "pages/workbench/workbench",
+			"style": {
+				"navigationStyle": "custom",
+				"pageOrientation": "landscape"
+			}
+		},
+		{
+			"path": "pages/customer-service/customer-service",
+			"style": {
+				"navigationStyle": "custom",
+				"pageOrientation": "landscape"
+			}
+		},
+		{
+			"path": "pages/promotion/promotion",
+			"style": {
+				"navigationStyle": "custom",
+				"pageOrientation": "landscape"
+			}
+		},
+		{
+			"path": "pages/admin/admin",
+			"style": {
+				"navigationStyle": "custom",
+				"pageOrientation": "landscape"
+			}
+		},
+		{
+			"path": "pages/profile/profile",
+			"style": {
+				"navigationStyle": "custom",
+				"pageOrientation": "landscape"
+			}
+		},
+		{
+			"path": "pages/settings/settings",
+			"style": {
+				"navigationStyle": "custom",
+				"pageOrientation": "landscape"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "white",
+		"navigationBarTitleText": "V-Poker",
+		"navigationBarBackgroundColor": "#0a0a0a",
+		"backgroundColor": "#0a0a0a",
+		"pageOrientation": "landscape"
+	},
+	"uniIdRouter": {}
+}
