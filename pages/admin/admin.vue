@@ -1,231 +1,616 @@
-<template>
-  <view class="admin-page theme-admin">
-    <!-- 背景 -->
-    <view class="page-bg">
-      <view class="bg-gradient"></view>
-    </view>
-
-    <!-- 顶部导航 -->
-    <view class="top-nav">
-      <view class="nav-left">
-        <view class="back-btn" @click="goBack">
-          <text class="back-icon">←</text>
-        </view>
-        <text class="nav-title">管理后台</text>
+﻿<template>
+  <ImmersivePage v-if="false" title="管理后台" :show-header="true" :scrollable="true" page-class="theme-admin">
+    <template #header-left>
+      <view class="back-btn" @click="goBack">
+        <VIcon name="back" :size="3.3" color="var(--color-text)" />
       </view>
-      <view class="nav-right">
-        <view class="admin-badge">
-          <text class="badge-icon">⚙️</text>
-          <text class="badge-text">管理员</text>
-        </view>
+    </template>
+    <template #header-right>
+      <view class="admin-badge">
+        <VIcon name="gear" :size="2.7" color="var(--color-text-muted)" />
+        <text class="badge-text">管理员</text>
       </view>
-    </view>
+    </template>
 
-    <!-- 主内容 -->
-    <scroll-view class="main-content" scroll-y>
-      <!-- 全局数据概览 -->
-      <view class="section">
-        <view class="section-header">
-          <text class="section-title">全局概览</text>
-          <text class="section-time">{{ currentTime }}</text>
-        </view>
-        <view class="stats-grid">
-          <view class="stat-card" v-for="(stat, index) in globalStats" :key="index">
-            <view class="stat-icon" :style="{ background: stat.color }">
-              <text>{{ stat.icon }}</text>
-            </view>
-            <view class="stat-content">
-              <text class="stat-value">{{ stat.value }}</text>
-              <text class="stat-label">{{ stat.label }}</text>
-            </view>
-            <view class="stat-trend" :class="stat.trend > 0 ? 'up' : 'down'">
-              <text>{{ stat.trend > 0 ? '↑' : '↓' }}{{ Math.abs(stat.trend) }}%</text>
-            </view>
+    <!-- 工作台分栏布局 -->
+    <view class="workbench-grid">
+      <!-- 左侧：全局概览 -->
+      <view class="workbench-left">
+    <!-- 全局概览 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">全局概览</text>
+        <text class="section-time">{{ currentTime }}</text>
+      </view>
+      <view class="stats-grid">
+        <view class="stat-card glass" v-for="(stat, index) in globalStats" :key="index">
+          <view class="stat-icon" :style="{ background: stat.color }">
+            <VIcon :name="stat.iconName" :size="3" color="#fff" />
+          </view>
+          <view class="stat-content">
+            <text class="stat-value">{{ stat.value }}</text>
+            <text class="stat-label">{{ stat.label }}</text>
           </view>
         </view>
       </view>
+    </view>
+      </view>
 
-      <!-- 功能菜单 -->
-      <view class="section">
-        <view class="section-header">
-          <text class="section-title">功能管理</text>
-        </view>
-        <view class="menu-grid">
-          <view
-            v-for="(menu, index) in adminMenus"
-            :key="index"
-            class="menu-card"
-            @click="handleMenuClick(menu)"
-          >
-            <view class="menu-icon" :style="{ background: menu.color }">
-              <text>{{ menu.icon }}</text>
-            </view>
-            <text class="menu-name">{{ menu.name }}</text>
-            <text class="menu-desc">{{ menu.desc }}</text>
-            <view v-if="menu.badge" class="menu-badge">
-              <text>{{ menu.badge }}</text>
-            </view>
+      <!-- 右侧：功能管理 + 在线房间 -->
+      <view class="workbench-right">
+
+    <!-- 功能管理 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">功能管理</text>
+      </view>
+      <view class="menu-grid">
+        <view v-for="(menu, index) in adminMenus" :key="index" class="menu-card glass" @click="openModal(menu.action)">
+          <view class="menu-icon" :style="{ background: menu.color }">
+            <VIcon :name="menu.iconName" :size="3.8" color="#fff" />
+          </view>
+          <text class="menu-name">{{ menu.name }}</text>
+          <text class="menu-desc">{{ menu.desc }}</text>
+          <view v-if="menu.badge" class="menu-badge">
+            <text>{{ menu.badge }}</text>
           </view>
         </view>
       </view>
+    </view>
 
-      <!-- 实时在线房间 -->
-      <view class="section">
-        <view class="section-header">
-          <text class="section-title">在线房间</text>
-          <text class="section-link" @click="viewAllRooms">全部房间</text>
+    <!-- 在线房间 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">在线房间</text>
+        <text class="section-link" @click="openModal('rooms')">全部房间</text>
+      </view>
+      <view class="room-list">
+        <view v-for="room in onlineRooms.slice(0, 5)" :key="room.id" class="room-card glass">
+          <view class="room-info">
+            <view class="room-header">
+              <text class="room-name">房间#{{ room.roomNo || room.id }}</text>
+              <view class="room-status" :class="room.status">
+                <text>{{ room.status === 'playing' ? '游戏中' : '等待中' }}</text>
+              </view>
+            </view>
+            <view class="room-meta">
+              <text class="meta-item">{{ room.gameType }}</text>
+              <text class="meta-item">{{ room.level || '-' }}级</text>
+              <text class="meta-item">{{ room.maxSeats || 0 }}人桌</text>
+            </view>
+          </view>
+          <view class="room-actions">
+            <view class="action-btn action-danger" @click="dissolveRoom(room)">
+              <text>解散</text>
+            </view>
+          </view>
         </view>
-        <view class="room-list">
-          <view
-            v-for="room in onlineRooms"
-            :key="room.id"
-            class="room-card"
-          >
-            <view class="room-info">
-              <view class="room-header">
-                <text class="room-name">{{ room.name }}</text>
-                <view class="room-status" :class="room.status">
-                  <text>{{ room.status === 'playing' ? '游戏中' : '等待中' }}</text>
+        <view v-if="onlineRooms.length === 0 && !isLoading" class="empty-list">
+          <text class="empty-text">暂无在线房间</text>
+        </view>
+      </view>
+    </view>
+      </view>
+    </view>
+
+    <view class="bottom-spacing"></view>
+
+    <template #modal>
+    <!-- ========== 用户管理弹窗 ========== -->
+    <view v-if="showUserModal" class="modal-overlay" @click="closeModal('user')">
+      <view class="modal-content modal-large glass" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">用户管理</text>
+          <view class="modal-close-btn" @click="closeModal('user')">
+            <VIcon name="close" :size="3" color="rgba(255,255,255,0.5)" />
+          </view>
+        </view>
+        <view class="modal-body">
+          <view class="search-bar">
+            <input class="search-input" v-model="userSearch" placeholder="搜索用户ID/账号" @confirm="searchUsers" />
+            <view class="search-btn" @click="searchUsers">搜索</view>
+          </view>
+          <view class="data-list">
+            <view v-for="user in userList" :key="user.id || user.userId" class="data-item">
+              <view class="data-avatar">
+                <text>{{ (user.account || user.nickname || 'U').charAt(0).toUpperCase() }}</text>
+              </view>
+              <view class="data-info">
+                <text class="data-name">{{ user.account || user.nickname || '用户#' + user.id }}</text>
+                <text class="data-sub">ID: {{ user.id || user.userId }} | 筹码: {{ user.points || 0 }} | 角色: {{ user.role || '玩家' }}</text>
+              </view>
+              <view class="data-actions">
+                <view class="mini-btn" @click="adjustUserPoints(user)">调整</view>
+                <view class="mini-btn" :class="user.frozen ? 'btn-warn' : 'btn-success'" @click="toggleUserStatus(user)">
+                  {{ user.frozen ? '解冻' : '冻结' }}
                 </view>
               </view>
-              <view class="room-meta">
-                <text class="meta-item">{{ room.gameType }}</text>
-                <text class="meta-item">{{ room.playerCount }}/{{ room.maxPlayers }}人</text>
-                <text class="meta-item">底注{{ room.ante }}</text>
+            </view>
+            <view v-if="userList.length === 0 && !modalLoading" class="empty-list">
+              <text class="empty-text">暂无用户</text>
+            </view>
+          </view>
+          <PaginationBar :pagination="userPagination" @change="loadUsers" />
+        </view>
+      </view>
+    </view>
+
+    <!-- ========== 房间管理弹窗 ========== -->
+    <view v-if="showRoomModal" class="modal-overlay" @click="closeModal('room')">
+      <view class="modal-content modal-large glass" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">房间管理</text>
+          <view class="modal-close-btn" @click="closeModal('room')">
+            <VIcon name="close" :size="3" color="rgba(255,255,255,0.5)" />
+          </view>
+        </view>
+        <view class="modal-body">
+          <view class="data-list">
+            <view v-for="room in allRooms" :key="room.id" class="data-item">
+              <view class="data-avatar">
+                <VIcon name="cards" :size="3" color="#fff" />
+              </view>
+              <view class="data-info">
+                <text class="data-name">房间#{{ room.roomNo || room.id }}</text>
+                <text class="data-sub">{{ room.gameType }} | {{ room.level || '-' }}级 | {{ room.maxSeats || 0 }}人桌 | 代理: {{ room.agentName || room.agentId || '-' }}</text>
+              </view>
+              <view class="data-actions">
+                <view class="mini-btn" @click="viewRoomDetail(room)">详情</view>
+                <view class="mini-btn btn-danger" @click="dissolveRoom(room)">解散</view>
               </view>
             </view>
-            <view class="room-actions">
-              <view class="action-btn" @click="viewRoomDetail(room)">
-                <text>详情</text>
+            <view v-if="allRooms.length === 0 && !modalLoading" class="empty-list">
+              <text class="empty-text">暂无房间</text>
+            </view>
+          </view>
+          <PaginationBar :pagination="roomPagination" @change="loadRooms" />
+        </view>
+      </view>
+    </view>
+
+    <!-- ========== 代理管理弹窗 ========== -->
+    <view v-if="showAgentModal" class="modal-overlay" @click="closeModal('agent')">
+      <view class="modal-content modal-large glass" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">代理管理</text>
+          <view class="modal-close-btn" @click="closeModal('agent')">
+            <VIcon name="close" :size="3" color="rgba(255,255,255,0.5)" />
+          </view>
+        </view>
+        <view class="modal-body">
+          <view class="data-list">
+            <view v-for="agent in agentList" :key="agent.id || agent.userId" class="data-item">
+              <view class="data-avatar agent-avatar">
+                <text>{{ (agent.account || agent.nickname || 'A').charAt(0).toUpperCase() }}</text>
               </view>
-              <view class="action-btn action-danger" @click="dissolveRoom(room)">
-                <text>解散</text>
+              <view class="data-info">
+                <text class="data-name">{{ agent.account || agent.nickname || '代理#' + agent.id }}</text>
+                <text class="data-sub">ID: {{ agent.id }} | 下线: {{ agent.subAgentCount || 0 }} | 返佣: {{ agent.commissionRate || 0 }}%</text>
               </view>
+              <view class="data-actions">
+                <view class="mini-btn" @click="viewAgentDetail(agent)">详情</view>
+              </view>
+            </view>
+            <view v-if="agentList.length === 0 && !modalLoading" class="empty-list">
+              <text class="empty-text">暂无代理数据</text>
+            </view>
+          </view>
+          <PaginationBar :pagination="agentPagination" @change="loadAgents" />
+        </view>
+      </view>
+    </view>
+
+    <!-- ========== 财务中心弹窗 ========== -->
+    <view v-if="showFinanceModal" class="modal-overlay" @click="closeModal('finance')">
+      <view class="modal-content modal-large glass" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">财务中心</text>
+          <view class="modal-close-btn" @click="closeModal('finance')">
+            <VIcon name="close" :size="3" color="rgba(255,255,255,0.5)" />
+          </view>
+        </view>
+        <view class="modal-body">
+          <view class="finance-stats">
+            <view class="finance-card">
+              <text class="finance-label">今日流水</text>
+              <text class="finance-value">{{ financeStats.todayFlow || 0 }}</text>
+            </view>
+            <view class="finance-card">
+              <text class="finance-label">今日抽水</text>
+              <text class="finance-value">{{ financeStats.todayRake || 0 }}</text>
+            </view>
+            <view class="finance-card">
+              <text class="finance-label">累计流水</text>
+              <text class="finance-value">{{ financeStats.totalFlow || 0 }}</text>
+            </view>
+            <view class="finance-card">
+              <text class="finance-label">累计抽水</text>
+              <text class="finance-value">{{ financeStats.totalRake || 0 }}</text>
+            </view>
+          </view>
+          <view class="section-subtitle">最近流水记录</view>
+          <view class="data-list">
+            <view v-for="record in ledgerList" :key="record.id" class="data-item">
+              <view class="data-avatar finance-avatar">
+                <VIcon name="coin" :size="3" color="#fff" />
+              </view>
+              <view class="data-info">
+                <text class="data-name">{{ record.type || record.action || '流水' }}</text>
+                <text class="data-sub">{{ record.userId || '-' }} | {{ record.time || record.createdAt || '-' }}</text>
+              </view>
+              <view class="data-amount" :class="record.amount > 0 ? 'amount-positive' : 'amount-negative'">
+                {{ record.amount > 0 ? '+' : '' }}{{ record.amount || 0 }}
+              </view>
+            </view>
+            <view v-if="ledgerList.length === 0 && !modalLoading" class="empty-list">
+              <text class="empty-text">暂无流水记录</text>
             </view>
           </view>
         </view>
       </view>
+    </view>
 
-      <!-- 审计日志 -->
-      <view class="section">
-        <view class="section-header">
-          <text class="section-title">审计日志</text>
-          <view class="log-filter">
-            <text
-              v-for="filter in logFilters"
-              :key="filter.value"
-              class="filter-item"
-              :class="{ active: activeLogFilter === filter.value }"
-              @click="activeLogFilter = filter.value"
-            >{{ filter.label }}</text>
+    <!-- ========== 审计日志弹窗 ========== -->
+    <view v-if="showAuditModal" class="modal-overlay" @click="closeModal('audit')">
+      <view class="modal-content modal-large glass" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">审计日志</text>
+          <view class="modal-close-btn" @click="closeModal('audit')">
+            <VIcon name="close" :size="3" color="rgba(255,255,255,0.5)" />
           </view>
         </view>
-        <view class="log-list">
-          <view
-            v-for="(log, index) in filteredLogs"
-            :key="index"
-            class="log-item"
-          >
-            <view class="log-type" :class="log.type">
-              <text>{{ log.typeIcon }}</text>
+        <view class="modal-body">
+          <view class="log-list">
+            <view v-for="(log, index) in auditLogs" :key="log.id || index" class="log-item">
+              <view class="log-type" :class="log.type">
+                <VIcon name="more" :size="2.7" color="var(--color-text-muted)" />
+              </view>
+              <view class="log-content">
+                <view class="log-top">
+                  <text class="log-action">{{ log.action || log.type }}</text>
+                  <text class="log-time">{{ log.time || log.createdAt }}</text>
+                </view>
+                <text class="log-detail">{{ log.detail || log.reason }}</text>
+                <view class="log-meta">
+                  <text class="log-operator">操作人: {{ log.operator || log.operatorName }}</text>
+                  <text class="log-ip">IP: {{ log.ip || '-' }}</text>
+                </view>
+              </view>
             </view>
-            <view class="log-content">
-              <view class="log-top">
-                <text class="log-action">{{ log.action }}</text>
-                <text class="log-time">{{ log.time }}</text>
-              </view>
-              <text class="log-detail">{{ log.detail }}</text>
-              <view class="log-meta">
-                <text class="log-operator">操作人: {{ log.operator }}</text>
-                <text class="log-ip">IP: {{ log.ip }}</text>
-              </view>
+            <view v-if="auditLogs.length === 0 && !modalLoading" class="empty-list">
+              <text class="empty-text">暂无审计日志</text>
             </view>
           </view>
         </view>
       </view>
+    </view>
 
-      <!-- 系统状态 -->
-      <view class="section">
-        <view class="section-header">
-          <text class="section-title">系统状态</text>
+    <!-- ========== 系统配置弹窗 ========== -->
+    <view v-if="showConfigModal" class="modal-overlay" @click="closeModal('config')">
+      <view class="modal-content modal-large glass" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">系统配置</text>
+          <view class="modal-close-btn" @click="closeModal('config')">
+            <VIcon name="close" :size="3" color="rgba(255,255,255,0.5)" />
+          </view>
         </view>
-        <view class="system-status">
-          <view class="status-item" v-for="(status, index) in systemStatus" :key="index">
-            <view class="status-header">
-              <text class="status-name">{{ status.name }}</text>
-              <view class="status-indicator" :class="status.status">
-                <view class="indicator-dot"></view>
-                <text class="indicator-text">{{ status.status === 'normal' ? '正常' : '异常' }}</text>
-              </view>
+        <view class="modal-body">
+          <view class="config-group">
+            <text class="config-group-title">APP 配置</text>
+            <view class="config-item">
+              <text class="config-label">当前版本</text>
+              <input class="config-input" v-model="systemConfig.app_version" />
             </view>
-            <view class="status-bar">
-              <view class="bar-fill" :style="{ width: status.usage + '%', background: status.usage > 80 ? '#F87171' : '#4ADE80' }"></view>
+            <view class="config-item">
+              <text class="config-label">下载地址</text>
+              <input class="config-input" v-model="systemConfig.app_download_url" />
             </view>
-            <text class="status-usage">使用率: {{ status.usage }}%</text>
+          </view>
+          <view class="config-actions">
+            <view class="config-btn config-btn-primary" @click="saveSystemConfig">保存配置</view>
+            <view class="config-btn" @click="reloadEconomyConfig">重载经济模型</view>
           </view>
         </view>
       </view>
+    </view>
 
-      <view class="bottom-spacing"></view>
-    </scroll-view>
-  </view>
+    <!-- ========== 调整筹码弹窗 ========== -->
+    <view v-if="showAdjustModal" class="modal-overlay" @click="showAdjustModal = false">
+      <view class="modal-content glass" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">调整用户筹码</text>
+          <view class="modal-close-btn" @click="showAdjustModal = false">
+            <VIcon name="close" :size="3" color="rgba(255,255,255,0.5)" />
+          </view>
+        </view>
+        <view class="modal-body">
+          <view class="adjust-user-info">
+            <text>用户: {{ adjustTarget?.account || adjustTarget?.nickname || '-' }}</text>
+            <text>当前筹码: {{ adjustTarget?.points || 0 }}</text>
+          </view>
+          <view class="form-group">
+            <text class="form-label">调整数量(正数增加/负数减少)</text>
+            <input class="form-input" type="digit" v-model="adjustAmount" placeholder="请输入数量" />
+          </view>
+          <view class="form-group">
+            <text class="form-label">调整原因</text>
+            <input class="form-input" v-model="adjustReason" placeholder="请输入原因" />
+          </view>
+          <view class="modal-footer">
+            <view class="btn-cancel" @click="showAdjustModal = false">取消</view>
+            <view class="btn-confirm" @click="confirmAdjustPoints">确认调整</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- ========== 权限管理弹窗 ========== -->
+    <view v-if="showPermissionModal" class="modal-overlay" @click="closeModal('permission')">
+      <view class="modal-content modal-xlarge glass" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">权限管理</text>
+          <view class="modal-close-btn" @click="closeModal('permission')">
+            <VIcon name="close" :size="3" color="rgba(255,255,255,0.5)" />
+          </view>
+        </view>
+        <view class="modal-body permission-body">
+          <!-- 角色选择器 -->
+          <view class="permission-role-tabs">
+            <view
+              v-for="role in permissionRoles"
+              :key="role.key"
+              class="permission-role-tab"
+              :class="{ active: selectedRole === role.key }"
+              @click="selectPermissionRole(role.key)"
+            >
+              <text class="role-tab-label">{{ role.label }}</text>
+              <text class="role-tab-desc">{{ role.desc }}</text>
+            </view>
+          </view>
+
+          <!-- 操作栏 -->
+          <view class="permission-toolbar">
+            <text class="permission-hint">勾选 = 该角色可见/可用，取消勾选 = 隐藏</text>
+            <view class="permission-actions">
+              <view class="mini-btn btn-ghost" @click="resetCurrentRolePermissions">重置默认</view>
+              <view class="mini-btn btn-primary" :class="{ disabled: !permissionDirty }" @click="savePermissions">
+                {{ permissionDirty ? '保存修改' : '已保存' }}
+              </view>
+            </view>
+          </view>
+
+          <!-- 功能权限矩阵（按分类分组） -->
+          <scroll-view class="permission-matrix-scroll" scroll-y>
+            <view v-for="(features, category) in featuresByCategory" :key="category" class="permission-category">
+              <view class="permission-category-header">
+                <text class="category-title">{{ category }}</text>
+                <text class="category-count">{{ features.length }} 项</text>
+              </view>
+              <view class="permission-list">
+                <view
+                  v-for="feature in features"
+                  :key="feature.key"
+                  class="permission-item"
+                  :class="{ enabled: isFeatureEnabled(feature.key) }"
+                  @click="toggleFeature(feature.key)"
+                >
+                  <view class="perm-icon-wrap">
+                    <VIcon :name="feature.icon" :size="3" :color="isFeatureEnabled(feature.key) ? 'var(--color-gold)' : 'var(--color-text-muted)'" />
+                  </view>
+                  <view class="perm-info">
+                    <text class="perm-label">{{ feature.label }}</text>
+                    <text class="perm-key">{{ feature.key }}</text>
+                  </view>
+                  <view class="perm-switch" :class="{ on: isFeatureEnabled(feature.key) }">
+                    <view class="perm-switch-thumb"></view>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </scroll-view>
+
+          <view class="permission-footer-note">
+            <text>管理员(admin)权限固定全开，不可修改。修改后对应用户重新进入大厅即生效。</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- ========== 客服管理弹窗 ========== -->
+    <view v-if="showCsModal" class="modal-overlay" @click="closeModal('cs')">
+      <view class="modal-content modal-large glass" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">客服管理</text>
+          <view class="modal-close-btn" @click="closeModal('cs')">
+            <VIcon name="close" :size="3" color="rgba(255,255,255,0.5)" />
+          </view>
+        </view>
+        <view class="modal-body">
+          <!-- Tab 切换 -->
+          <view class="cs-tabs">
+            <view class="cs-tab" :class="{ active: csTab === 'staff' }" @click="switchCsTab('staff')">客服人员</view>
+            <view class="cs-tab" :class="{ active: csTab === 'stats' }" @click="switchCsTab('stats')">数据统计</view>
+          </view>
+
+          <!-- 客服人员列表 -->
+          <view v-if="csTab === 'staff'" class="cs-staff-panel">
+            <view class="cs-stats-bar">
+              <view class="cs-stat-item">
+                <text class="cs-stat-value">{{ csStaffList.filter(s => s.csStatus === 'online').length }}</text>
+                <text class="cs-stat-label">接待中</text>
+              </view>
+              <view class="cs-stat-item">
+                <text class="cs-stat-value">{{ csStaffList.filter(s => s.csStatus === 'offline').length }}</text>
+                <text class="cs-stat-label">已关闭</text>
+              </view>
+              <view class="cs-stat-item">
+                <text class="cs-stat-value">{{ csStaffList.length }}</text>
+                <text class="cs-stat-label">总客服</text>
+              </view>
+            </view>
+            <view v-if="csStaffLoading" class="cs-loading"><text>加载中...</text></view>
+            <view v-else class="cs-staff-list">
+              <view v-for="staff in csStaffList" :key="staff.id" class="cs-staff-card">
+                <view class="cs-staff-avatar">
+                  <text class="cs-staff-avatar-text">{{ (staff.nickname || staff.account || '?').charAt(0) }}</text>
+                </view>
+                <view class="cs-staff-info">
+                  <text class="cs-staff-name">{{ staff.nickname || staff.account }}</text>
+                  <text class="cs-staff-meta">当前会话 {{ staff.activeSessions || 0 }} · 今日接待 {{ staff.todaySessions || 0 }}</text>
+                </view>
+                <view class="cs-staff-status" :class="staff.csStatus === 'online' ? 'online' : 'offline'">
+                  <text>{{ staff.csStatus === 'online' ? '接待中' : '已关闭' }}</text>
+                </view>
+                <view class="cs-staff-action">
+                  <view
+                    class="cs-toggle-btn"
+                    :class="staff.csStatus === 'online' ? 'btn-off' : 'btn-on'"
+                    @click="toggleCsStatus(staff)"
+                  >
+                    <text>{{ staff.csStatus === 'online' ? '关闭接待' : '开启接待' }}</text>
+                  </view>
+                </view>
+              </view>
+              <view v-if="csStaffList.length === 0" class="cs-empty"><text>暂无客服人员</text></view>
+            </view>
+          </view>
+
+          <!-- 数据统计 -->
+          <view v-else class="cs-stats-panel">
+            <view class="cs-stats-grid">
+              <view class="cs-stat-card">
+                <text class="cs-stat-card-value">{{ csStats.totalMessages || 0 }}</text>
+                <text class="cs-stat-card-label">总消息数</text>
+              </view>
+              <view class="cs-stat-card">
+                <text class="cs-stat-card-value">{{ csStats.totalSessions || 0 }}</text>
+                <text class="cs-stat-card-label">总会话数</text>
+              </view>
+              <view class="cs-stat-card">
+                <text class="cs-stat-card-value">{{ csStats.avgResponseTime || 0 }}s</text>
+                <text class="cs-stat-card-label">平均响应</text>
+              </view>
+              <view class="cs-stat-card">
+                <text class="cs-stat-card-value">{{ csStats.satisfactionRate || 0 }}%</text>
+                <text class="cs-stat-card-label">满意度</text>
+              </view>
+            </view>
+            <view class="cs-stats-refresh">
+              <view class="mini-btn btn-primary" @click="loadCsStats">刷新统计</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+    </template>
+  </ImmersivePage>
+  <AdminOperationsDesk />
 </template>
 
 <script>
+import {
+  getAdminStats,
+  getAdminRoomList,
+  forceEndRoom,
+  getAuditLogs,
+  getUserList,
+  adjustUserPoints,
+  setUserRole,
+  freezeUser,
+  unfreezeUser,
+  getAdminLedger,
+  getSystemConfig,
+  updateSystemConfig,
+  reloadEconomyV2,
+  getCsStaff,
+  getCsReport,
+  setCsStatus,
+} from '../../api/admin.js'
+import { getMe } from '../../api/auth.js'
+import ImmersivePage from '../../components/ui/ImmersivePage.vue'
+import VIcon from '../../components/ui/VIcon.vue'
+import PaginationBar from '../../components/ui/PaginationBar.vue'
+import AdminOperationsDesk from '../../components/admin/AdminOperationsDesk.vue'
+import { getFeaturesByCategory } from '../../utils/featurePermissions.js'
+import { getAllPermissions, updateRolePermissions, resetRolePermissions } from '../../api/permissions.js'
+
 export default {
   name: 'AdminDashboard',
+  components: { ImmersivePage, VIcon, PaginationBar, AdminOperationsDesk },
   data() {
     return {
       currentTime: '',
-      activeLogFilter: 'all',
-      logFilters: [
-        { label: '全部', value: 'all' },
-        { label: '用户', value: 'user' },
-        { label: '房间', value: 'room' },
-        { label: '系统', value: 'system' },
-        { label: '财务', value: 'finance' },
-      ],
+      isLoading: false,
+      modalLoading: false,
       globalStats: [
-        { icon: '👥', label: '总用户', value: '12,580', trend: 5.2, color: 'linear-gradient(135deg, #4A5568, #2D3748)' },
-        { icon: '🎮', label: '在线玩家', value: '326', trend: 12.8, color: 'linear-gradient(135deg, #48BB78, #38A169)' },
-        { icon: '🏠', label: '在线房间', value: '48', trend: 8.3, color: 'linear-gradient(135deg, #4299E1, #3182CE)' },
-        { icon: '💰', label: '今日流水', value: '258.6K', trend: 15.6, color: 'linear-gradient(135deg, #ED8936, #DD6B20)' },
-        { icon: '📊', label: '今日抽水', value: '7,758', trend: 15.6, color: 'linear-gradient(135deg, #9F7AEA, #805AD5)' },
-        { icon: '⚠️', label: '异常事件', value: '3', trend: -25, color: 'linear-gradient(135deg, #F56565, #E53E3E)' },
+        { iconName: 'user', label: '总用户', value: '0', trend: 0, color: 'linear-gradient(135deg, var(--color-text-muted), var(--color-bg-card))' },
+        { iconName: 'cards', label: '代理数', value: '0', trend: 0, color: 'linear-gradient(135deg, var(--color-success), var(--color-success))' },
+        { iconName: 'more', label: '在线房间', value: '0', trend: 0, color: 'linear-gradient(135deg, #4299E1, var(--color-info))' },
+        { iconName: 'coin', label: '累计流水', value: '0', trend: 0, color: 'linear-gradient(135deg, var(--color-gold-dark), var(--color-gold-dark))' },
+        { iconName: 'more', label: '累计抽水', value: '0', trend: 0, color: 'linear-gradient(135deg, var(--theme-primary), var(--theme-primary))' },
+        { iconName: 'warning', label: '客服调整', value: '0', trend: 0, color: 'linear-gradient(135deg, var(--color-danger), var(--color-danger))' },
       ],
       adminMenus: [
-        { name: '用户管理', desc: '用户列表/冻结/调整', icon: '👥', color: 'linear-gradient(135deg, #4299E1, #3182CE)', badge: null, action: 'users' },
-        { name: '房间管理', desc: '房间列表/解散/监控', icon: '🏠', color: 'linear-gradient(135deg, #48BB78, #38A169)', badge: '48', action: 'rooms' },
-        { name: '代理管理', desc: '代理层级/返佣配置', icon: '🤝', color: 'linear-gradient(135deg, #9F7AEA, #805AD5)', badge: null, action: 'agents' },
-        { name: '财务中心', desc: '流水/抽水/对账', icon: '💰', color: 'linear-gradient(135deg, #ED8936, #DD6B20)', badge: null, action: 'finance' },
-        { name: '审计日志', desc: '操作记录/安全审计', icon: '📋', color: 'linear-gradient(135deg, #4A5568, #2D3748)', badge: null, action: 'audit' },
-        { name: '系统配置', desc: '参数/规则/公告', icon: '⚙️', color: 'linear-gradient(135deg, #718096, #4A5568)', badge: null, action: 'config' },
+        { name: '用户管理', desc: '用户列表/冻结/调整', iconName: 'user', color: 'linear-gradient(135deg, #4299E1, var(--color-info))', badge: null, action: 'users' },
+        { name: '房间管理', desc: '房间列表/解散/监控', iconName: 'more', color: 'linear-gradient(135deg, var(--color-success), var(--color-success))', badge: null, action: 'rooms' },
+        { name: '代理管理', desc: '代理层级/返佣配置', iconName: 'user', color: 'linear-gradient(135deg, var(--theme-primary), var(--theme-primary))', badge: null, action: 'agents' },
+        { name: '客服管理', desc: '接待状态/工作统计', iconName: 'headset', color: 'linear-gradient(135deg, var(--color-info), #319795)', badge: null, action: 'cs' },
+        { name: '财务中心', desc: '流水/抽水/对账', iconName: 'coin', color: 'linear-gradient(135deg, var(--color-gold-dark), var(--color-gold-dark))', badge: null, action: 'finance' },
+        { name: '审计日志', desc: '操作记录/安全审计', iconName: 'more', color: 'linear-gradient(135deg, var(--color-text-muted), var(--color-bg-card))', badge: null, action: 'audit' },
+        { name: '系统配置', desc: '版本/下载地址', iconName: 'gear', color: 'linear-gradient(135deg, var(--color-text-muted), var(--color-text-muted))', badge: null, action: 'config' },
+        { name: '权限管理', desc: '角色功能/菜单显隐', iconName: 'gear', color: 'linear-gradient(135deg, var(--color-gold), #D69E2E)', badge: null, action: 'permissions' },
       ],
-      onlineRooms: [
-        { id: 1, name: 'VIP房001', gameType: '抢庄牛牛', playerCount: 6, maxPlayers: 6, ante: 10, status: 'playing', creator: '代理A' },
-        { id: 2, name: '休闲房002', gameType: '炸金花', playerCount: 4, maxPlayers: 6, ante: 5, status: 'playing', creator: '玩家小明' },
-        { id: 3, name: '高手房003', gameType: '德州扑克', playerCount: 5, maxPlayers: 6, ante: 20, status: 'waiting', creator: '代理B' },
-        { id: 4, name: '新手房004', gameType: '通比牛牛', playerCount: 3, maxPlayers: 6, ante: 2, status: 'playing', creator: '玩家小红' },
+      onlineRooms: [],
+      auditLogs: [],
+      // 弹窗状态
+      showUserModal: false,
+      showRoomModal: false,
+      showAgentModal: false,
+      showFinanceModal: false,
+      showAuditModal: false,
+      showConfigModal: false,
+      showPermissionModal: false,
+      showAdjustModal: false,
+      showCsModal: false,
+      // 客服管理
+      csStaffList: [],
+      csStaffLoading: false,
+      csStats: {},
+      csTab: 'staff', // staff | stats
+      // 权限管理
+      permissionRoles: [
+        { key: 'player', label: '普通玩家', desc: '基础游戏用户' },
+        { key: 'agent', label: '代理', desc: '可创建房间' },
+        { key: 'top_agent', label: '总代', desc: '管理下线代理' },
+        { key: 'customer_service', label: '客服', desc: '客服工作台' },
       ],
-      auditLogs: [
-        { id: 1, type: 'user', typeIcon: '👤', action: '冻结用户账号', detail: '冻结用户 user001（玩家小明），原因：涉嫌作弊', operator: 'admin', time: '2026-08-25 14:32:15', ip: '192.168.1.100' },
-        { id: 2, type: 'room', typeIcon: '🏠', action: '解散房间', detail: '强制解散房间 VIP房088，原因：违规行为', operator: 'admin', time: '2026-08-25 13:45:22', ip: '192.168.1.100' },
-        { id: 3, type: 'finance', typeIcon: '💰', action: '调整筹码', detail: '为用户 user002 增加筹码 500，原因：充值补偿', operator: '客服A', time: '2026-08-25 12:20:08', ip: '192.168.1.101' },
-        { id: 4, type: 'system', typeIcon: '⚙️', action: '修改系统配置', detail: '修改抽水比例为 3%', operator: 'admin', time: '2026-08-25 10:15:30', ip: '192.168.1.100' },
-        { id: 5, type: 'user', typeIcon: '👤', action: '用户注册', detail: '新用户注册：user099（玩家小刚），邀请人：代理A', operator: 'system', time: '2026-08-25 09:30:45', ip: '192.168.1.200' },
-      ],
-      systemStatus: [
-        { name: 'API服务器', status: 'normal', usage: 45 },
-        { name: '数据库', status: 'normal', usage: 62 },
-        { name: 'WebSocket服务', status: 'normal', usage: 38 },
-        { name: '内存使用', status: 'normal', usage: 71 },
-      ],
+      selectedRole: 'player',
+      rolePermissions: {}, // { role: { featureKey: boolean } }
+      permissionDirty: false,
+      // 用户管理
+      userSearch: '',
+      userList: [],
+      userPagination: { page: 1, pageSize: 20, total: 0, totalPages: 1 },
+      // 房间管理
+      allRooms: [],
+      roomPagination: { page: 1, pageSize: 20, total: 0, totalPages: 1 },
+      // 代理管理
+      agentList: [],
+      agentPagination: { page: 1, pageSize: 20, total: 0, totalPages: 1 },
+      // 财务中心
+      financeStats: {},
+      ledgerList: [],
+      // 系统配置
+      systemConfig: { app_version: '', app_download_url: '' },
+      // 调整筹码
+      adjustTarget: null,
+      adjustAmount: '',
+      adjustReason: '',
     }
   },
   computed: {
-    filteredLogs() {
-      if (this.activeLogFilter === 'all') return this.auditLogs
-      return this.auditLogs.filter(log => log.type === this.activeLogFilter)
+    featuresByCategory() {
+      return getFeaturesByCategory()
     },
   },
   onLoad() {
@@ -233,6 +618,7 @@ export default {
     this.timeInterval = setInterval(() => {
       this.updateTime()
     }, 1000)
+    this.checkRoleAndLoad()
   },
   onUnload() {
     if (this.timeInterval) {
@@ -240,6 +626,147 @@ export default {
     }
   },
   methods: {
+    // 角色校验：仅 admin 可访问
+    async checkRoleAndLoad() {
+      try {
+        const res = await getMe()
+        const role = res.user?.role || res.data?.user?.role
+        if (role !== 'admin') {
+          uni.showToast({ title: '无权限访问', icon: 'none' })
+          setTimeout(() => uni.reLaunch({ url: '/pages/lobby/lobby' }), 800)
+          return
+        }
+        this.loadAllData()
+      } catch (e) {
+        console.error('[Admin] 角色校验失败', e)
+        uni.showToast({ title: '登录态失效，请重新登录', icon: 'none' })
+        setTimeout(() => uni.reLaunch({ url: '/pages/login/login' }), 800)
+      }
+    },
+    async loadAllData() {
+      this.isLoading = true
+      try {
+        await Promise.all([
+          this.loadStats(),
+          this.loadRooms(),
+          this.loadAuditLogs(),
+        ])
+      } catch (e) {
+        console.error('[Admin] 加载数据失败', e)
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async loadStats() {
+      try {
+        const data = await getAdminStats()
+        if (data) {
+          this.globalStats[0].value = data.totalUsers || 0
+          this.globalStats[1].value = (data.users && (data.users.agent + data.users.top_agent)) || 0
+          this.globalStats[2].value = data.activeRooms || data.onlineRooms || 0
+          this.globalStats[3].value = data.totalFlow || data.todayVolume || 0
+          this.globalStats[4].value = data.totalRake || data.todayRake || 0
+          this.globalStats[5].value = data.v3TotalCsAdjust || 0
+          this.adminMenus[1].badge = data.activeRooms || null
+          this.financeStats = {
+            todayFlow: data.todayVolume || 0,
+            todayRake: data.todayRake || 0,
+            totalFlow: data.totalFlow || 0,
+            totalRake: data.totalRake || 0,
+          }
+        }
+      } catch (e) {
+        console.warn('[Admin] 统计数据加载失败', e)
+      }
+    },
+
+    async loadRooms(page = 1) {
+      try {
+        const data = await getAdminRoomList({ page, pageSize: this.roomPagination.pageSize })
+        this.onlineRooms = Array.isArray(data.data) ? data.data : (data.list || data.rooms || [])
+        this.allRooms = this.onlineRooms
+        this.roomPagination = data.pagination || { ...this.roomPagination, page }
+      } catch (e) {
+        console.warn('[Admin] 房间列表加载失败', e)
+        this.onlineRooms = []
+        this.allRooms = []
+      }
+    },
+
+    async loadAuditLogs() {
+      try {
+        const data = await getAuditLogs({ limit: 100 })
+        this.auditLogs = data.list || data.logs || data || []
+      } catch (e) {
+        console.warn('[Admin] 审计日志加载失败', e)
+        this.auditLogs = []
+      }
+    },
+
+    async loadUsers(page = 1) {
+      this.modalLoading = true
+      try {
+        const params = { page, pageSize: this.userPagination.pageSize }
+        if (this.userSearch.trim()) {
+          params.q = this.userSearch.trim()
+        }
+        const data = await getUserList(params)
+        this.userList = Array.isArray(data.data) ? data.data : (data.list || data.users || [])
+        this.userPagination = data.pagination || { ...this.userPagination, page }
+      } catch (e) {
+        console.warn('[Admin] 用户列表加载失败', e)
+        this.userList = []
+      } finally {
+        this.modalLoading = false
+      }
+    },
+
+    searchUsers() {
+      this.loadUsers(1)
+    },
+
+    async loadAgents(page = 1) {
+      this.modalLoading = true
+      try {
+        const data = await getUserList({ role: 'agent', page, pageSize: this.agentPagination.pageSize })
+        this.agentList = Array.isArray(data.data) ? data.data : (data.list || data.users || [])
+        this.agentPagination = data.pagination || { ...this.agentPagination, page }
+      } catch (e) {
+        console.warn('[Admin] 代理列表加载失败', e)
+        this.agentList = []
+      } finally {
+        this.modalLoading = false
+      }
+    },
+
+    async loadLedger() {
+      this.modalLoading = true
+      try {
+        const data = await getAdminLedger()
+        this.ledgerList = data.list || data.records || data || []
+      } catch (e) {
+        console.warn('[Admin] 流水记录加载失败', e)
+        this.ledgerList = []
+      } finally {
+        this.modalLoading = false
+      }
+    },
+
+    async loadSystemConfig() {
+      this.modalLoading = true
+      try {
+        const data = await getSystemConfig()
+        if (data) {
+          this.systemConfig = { ...this.systemConfig, ...data }
+        }
+      } catch (e) {
+        console.warn('[Admin] 系统配置加载失败', e)
+      } finally {
+        this.modalLoading = false
+      }
+    },
+
     updateTime() {
       const now = new Date()
       this.currentTime = now.toLocaleString('zh-CN', {
@@ -251,228 +778,431 @@ export default {
         second: '2-digit',
       })
     },
+
     goBack() {
       uni.navigateBack()
     },
-    handleMenuClick(menu) {
-      uni.showToast({ title: `进入${menu.name}`, icon: 'none' })
+
+    openModal(action) {
+      switch (action) {
+        case 'users':
+          this.showUserModal = true
+          this.loadUsers(1)
+          break
+        case 'rooms':
+          this.showRoomModal = true
+          this.loadRooms(1)
+          break
+        case 'agents':
+          this.showAgentModal = true
+          this.loadAgents(1)
+          break
+        case 'finance':
+          this.showFinanceModal = true
+          this.loadLedger()
+          break
+        case 'audit':
+          this.showAuditModal = true
+          this.loadAuditLogs()
+          break
+        case 'config':
+          this.showConfigModal = true
+          this.loadSystemConfig()
+          break
+        case 'permissions':
+          this.showPermissionModal = true
+          this.loadPermissions()
+          break
+        case 'cs':
+          this.showCsModal = true
+          this.csTab = 'staff'
+          this.loadCsStaff()
+          break
+      }
     },
-    viewAllRooms() {
-      uni.showToast({ title: '查看全部房间', icon: 'none' })
+
+    closeModal(type) {
+      switch (type) {
+        case 'user':
+          this.showUserModal = false
+          break
+        case 'room':
+          this.showRoomModal = false
+          break
+        case 'agent':
+          this.showAgentModal = false
+          break
+        case 'finance':
+          this.showFinanceModal = false
+          break
+        case 'audit':
+          this.showAuditModal = false
+          break
+        case 'config':
+          this.showConfigModal = false
+          break
+        case 'permission':
+          this.showPermissionModal = false
+          break
+        case 'cs':
+          this.showCsModal = false
+          break
+      }
     },
+
     viewRoomDetail(room) {
-      uni.showToast({ title: `查看 ${room.name}`, icon: 'none' })
+      uni.showToast({ title: `房间ID: ${room.id}`, icon: 'none' })
     },
+
+    viewAgentDetail(agent) {
+      uni.showToast({ title: `代理ID: ${agent.id}`, icon: 'none' })
+    },
+
     dissolveRoom(room) {
       uni.showModal({
         title: '解散房间',
-        content: `确定强制解散房间 ${room.name} 吗？`,
-        confirmColor: '#E53E3E',
-        success: (res) => {
+        content: `确定强制解散房间 #${room.roomNo || room.id} 吗？`,
+        confirmColor: 'var(--color-danger)',
+        success: async (res) => {
           if (res.confirm) {
-            uni.showToast({ title: '已解散', icon: 'success' })
+            try {
+              await forceEndRoom(room.id)
+              uni.showToast({ title: '已解散', icon: 'success' })
+              this.loadRooms()
+              this.loadAuditLogs()
+            } catch (e) {
+              uni.showToast({ title: e.error || '解散失败', icon: 'none' })
+            }
           }
-        }
+        },
       })
+    },
+
+    adjustUserPoints(user) {
+      this.adjustTarget = user
+      this.adjustAmount = ''
+      this.adjustReason = ''
+      this.showAdjustModal = true
+    },
+
+    async confirmAdjustPoints() {
+      if (!this.adjustAmount || parseInt(this.adjustAmount) === 0) {
+        uni.showToast({ title: '请输入有效数量', icon: 'none' })
+        return
+      }
+      if (!this.adjustReason.trim()) {
+        uni.showToast({ title: '请输入调整原因', icon: 'none' })
+        return
+      }
+      try {
+        await adjustUserPoints(
+          this.adjustTarget.id || this.adjustTarget.userId,
+          parseInt(this.adjustAmount),
+          this.adjustReason
+        )
+        uni.showToast({ title: '调整成功', icon: 'success' })
+        this.showAdjustModal = false
+        this.loadUsers()
+        this.loadStats()
+      } catch (e) {
+        uni.showToast({ title: e.error || '调整失败', icon: 'none' })
+      }
+    },
+
+    async toggleUserStatus(user) {
+      const userId = user.id || user.userId
+      const isFrozen = user.frozen
+      try {
+        if (isFrozen) {
+          await unfreezeUser(userId)
+          uni.showToast({ title: '已解冻', icon: 'success' })
+        } else {
+          await freezeUser(userId)
+          uni.showToast({ title: '已冻结', icon: 'success' })
+        }
+        this.loadUsers()
+      } catch (e) {
+        uni.showToast({ title: e.error || '操作失败', icon: 'none' })
+      }
+    },
+
+    async saveSystemConfig() {
+      try {
+        await updateSystemConfig({
+          app_version: this.systemConfig.app_version,
+          app_download_url: this.systemConfig.app_download_url,
+        })
+        uni.showToast({ title: '配置已保存', icon: 'success' })
+      } catch (e) {
+        uni.showToast({ title: e.error || '保存失败', icon: 'none' })
+      }
+    },
+
+    async reloadEconomyConfig() {
+      try {
+        await reloadEconomyV2()
+        uni.showToast({ title: '经济模型已重载', icon: 'success' })
+      } catch (e) {
+        uni.showToast({ title: e.error || '重载失败', icon: 'none' })
+      }
+    },
+
+    // ========== 权限管理 ==========
+    async loadPermissions() {
+      this.modalLoading = true
+      try {
+        const data = await getAllPermissions()
+        this.rolePermissions = data.permissions || data || {}
+        this.permissionDirty = false
+      } catch (e) {
+        console.warn('[Admin] 权限配置加载失败', e)
+      } finally {
+        this.modalLoading = false
+      }
+    },
+
+    selectPermissionRole(roleKey) {
+      if (this.permissionDirty) {
+        uni.showModal({
+          title: '未保存的修改',
+          content: '当前角色的权限修改尚未保存，切换角色将丢失修改。是否继续？',
+          success: (res) => {
+            if (res.confirm) {
+              this.selectedRole = roleKey
+              this.permissionDirty = false
+            }
+          },
+        })
+      } else {
+        this.selectedRole = roleKey
+      }
+    },
+
+    toggleFeature(featureKey) {
+      if (!this.rolePermissions[this.selectedRole]) {
+        this.$set(this.rolePermissions, this.selectedRole, {})
+      }
+      const current = this.rolePermissions[this.selectedRole][featureKey]
+      this.$set(this.rolePermissions[this.selectedRole], featureKey, !current)
+      this.permissionDirty = true
+    },
+
+    async savePermissions() {
+      try {
+        const perms = this.rolePermissions[this.selectedRole] || {}
+        await updateRolePermissions(this.selectedRole, perms)
+        this.permissionDirty = false
+        uni.showToast({ title: '权限已保存', icon: 'success' })
+      } catch (e) {
+        uni.showToast({ title: e.error || '保存失败', icon: 'none' })
+      }
+    },
+
+    resetCurrentRolePermissions() {
+      uni.showModal({
+        title: '重置权限',
+        content: `确定将「${this.getRoleLabel(this.selectedRole)}」恢复为默认权限吗？`,
+        confirmColor: 'var(--color-danger)',
+        success: async (res) => {
+          if (res.confirm) {
+            try {
+              await resetRolePermissions(this.selectedRole)
+              await this.loadPermissions()
+              uni.showToast({ title: '已重置为默认', icon: 'success' })
+            } catch (e) {
+              uni.showToast({ title: e.error || '重置失败', icon: 'none' })
+            }
+          }
+        },
+      })
+    },
+
+    getRoleLabel(roleKey) {
+      const role = this.permissionRoles.find(r => r.key === roleKey)
+      return role ? role.label : roleKey
+    },
+
+    isFeatureEnabled(featureKey) {
+      const perms = this.rolePermissions[this.selectedRole]
+      if (!perms) return true
+      return perms[featureKey] !== false
+    },
+
+    // ========== 客服管理 ==========
+    switchCsTab(tab) {
+      this.csTab = tab
+      if (tab === 'staff') this.loadCsStaff()
+      else if (tab === 'stats') this.loadCsStats()
+    },
+
+    async loadCsStaff() {
+      this.csStaffLoading = true
+      try {
+        const res = await getCsStaff()
+        const list = res.list || res.data?.list || res.data || res || []
+        // 兼容后端字段名：cs_status 或 csStatus
+        this.csStaffList = (Array.isArray(list) ? list : []).map(s => ({
+          ...s,
+          csStatus: s.csStatus || s.cs_status || 'offline',
+          activeSessions: s.activeSessions ?? s.active_sessions ?? 0,
+          todaySessions: s.todaySessions ?? s.today_sessions ?? 0,
+        }))
+      } catch (e) {
+        console.error('[Admin] 加载客服列表失败', e)
+        this.csStaffList = []
+        uni.showToast({ title: '加载客服列表失败', icon: 'none' })
+      } finally {
+        this.csStaffLoading = false
+      }
+    },
+
+    async toggleCsStatus(staff) {
+      const newStatus = staff.csStatus === 'online' ? 'offline' : 'online'
+      const actionText = newStatus === 'online' ? '开启接待' : '关闭接待'
+      try {
+        await setCsStatus(staff.id, newStatus)
+        staff.csStatus = newStatus
+        uni.showToast({ title: `${actionText}成功`, icon: 'success' })
+      } catch (e) {
+        console.error('[Admin] 切换客服状态失败', e)
+        uni.showToast({ title: e.error || '操作失败', icon: 'none' })
+      }
+    },
+
+    async loadCsStats() {
+      try {
+        const date = new Date().toISOString().slice(0, 10)
+        const res = await getCsReport({ period: 'day', date })
+        this.csStats = res.report || res.data?.report || res.data || res || {}
+      } catch (e) {
+        console.error('[Admin] 加载客服统计失败', e)
+        this.csStats = {}
+      }
     },
   },
 }
 </script>
 
 <style lang="scss" scoped>
-.admin-page {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  background: #0a0e14;
-}
-
 .theme-admin {
-  --primary-color: #4A5568;
-  --accent-color: #718096;
+  --primary-color: var(--color-text-muted);
+  --accent-color: var(--color-text-muted);
+  background: #0a0e14 !important;
 }
 
-.page-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-}
-
-.bg-gradient {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(180deg, #1a202c 0%, #0a0e14 100%);
-}
-
-.top-nav {
-  position: relative;
-  z-index: 10;
+/* 工作台左右分栏布局 */
+.workbench-grid {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 72rpx;
-  padding: 0 24rpx;
-  background: rgba(26, 32, 44, 0.9);
-  border-bottom: 1px solid rgba(113, 128, 150, 0.2);
+  gap: 3vh;
+  padding: 2vh 0;
 }
 
-.nav-left {
+.workbench-left {
+  width: 35%;
+  min-width: 28vh;
+  flex-shrink: 0;
+}
+
+.workbench-right {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  align-items: center;
-  gap: 16rpx;
+  flex-direction: column;
+  gap: 3vh;
+}
+
+/* 响应式：窄屏时改为垂直布局 */
+@media (max-width: 900px) {
+  .workbench-grid {
+    flex-direction: column;
+    gap: 2vh;
+  }
+  .workbench-left {
+    width: 100%;
+    min-width: 0;
+  }
+  .stats-grid, .menu-grid, .finance-stats, .cs-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .data-item { flex-wrap: wrap; gap: 1vh; }
 }
 
 .back-btn {
-  width: 44rpx;
-  height: 44rpx;
+  width: 4.5vh;
+  height: max(4.5vh, 44px);
+  min-width: 44px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255,255,255,0.06);
   border-radius: 50%;
-}
-
-.back-icon {
-  font-size: 22rpx;
-  color: #e8e8e8;
-}
-
-.nav-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #CBD5E0;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 
 .admin-badge {
   display: flex;
   align-items: center;
-  gap: 8rpx;
-  padding: 6rpx 16rpx;
+  gap: 0.5vw;
+  padding: 0.8vh 1.2vw;
   background: rgba(113, 128, 150, 0.2);
   border: 1px solid rgba(113, 128, 150, 0.3);
-  border-radius: 20rpx;
-}
-
-.badge-icon {
-  font-size: 20rpx;
+  border-radius: 2vh;
 }
 
 .badge-text {
-  font-size: 20rpx;
-  color: #A0AEC0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
   font-weight: 600;
 }
 
-.main-content {
-  position: relative;
-  z-index: 1;
-  height: calc(100vh - 72rpx);
-  padding: 20rpx;
-}
-
-.section {
-  margin-bottom: 28rpx;
-}
-
+.section { margin-bottom: 2.5vh; }
 .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14rpx;
+  margin-bottom: 1.5vh;
 }
+.section-title { font-size: var(--text-sm); font-weight: 700; color: var(--color-border); }
+.section-time { font-size: var(--text-xs); color: rgba(255,255,255,0.4); font-family: monospace; }
+.section-link { font-size: var(--text-xs); color: var(--color-info); }
+.section-subtitle { font-size: var(--text-xs); font-weight: 600; color: var(--color-border); margin: 2vh 0 1vh; }
 
-.section-title {
-  font-size: 26rpx;
-  font-weight: 700;
-  color: #E2E8F0;
-}
-
-.section-time {
-  font-size: 20rpx;
-  color: rgba(255, 255, 255, 0.4);
-  font-family: monospace;
-}
-
-.section-link {
-  font-size: 20rpx;
-  color: #63B3ED;
-}
-
-/* 统计卡片 */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12rpx;
+  gap: 1vw;
 }
 
 .stat-card {
   display: flex;
   align-items: center;
-  padding: 14rpx;
-  background: rgba(45, 55, 72, 0.5);
-  border: 1px solid rgba(113, 128, 150, 0.15);
-  border-radius: 10rpx;
+  padding: 1.5vh 1vw;
+  border-radius: 1.2vh;
   position: relative;
   overflow: hidden;
+  border: 1px solid rgba(113, 128, 150, 0.15);
 }
 
 .stat-icon {
-  width: 44rpx;
-  height: 44rpx;
+  width: 4.5vh;
+  height: max(4.5vh, 44px);
+  min-width: 44px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20rpx;
-  border-radius: 8rpx;
-  margin-right: 10rpx;
+  border-radius: 1vh;
+  margin-right: 0.8vw;
+  flex-shrink: 0;
 }
 
-.stat-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
+.stat-content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.stat-value { font-size: var(--text-sm); font-weight: 700; color: var(--color-border); }
+.stat-label { font-size: var(--text-xs); color: rgba(255,255,255,0.4); }
 
-.stat-value {
-  font-size: 24rpx;
-  font-weight: 700;
-  color: #E2E8F0;
-}
-
-.stat-label {
-  font-size: 16rpx;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.stat-trend {
-  position: absolute;
-  top: 6rpx;
-  right: 6rpx;
-  font-size: 14rpx;
-  padding: 2rpx 6rpx;
-  border-radius: 4rpx;
-}
-
-.stat-trend.up {
-  color: #48BB78;
-  background: rgba(72, 187, 120, 0.1);
-}
-
-.stat-trend.down {
-  color: #F56565;
-  background: rgba(245, 101, 101, 0.1);
-}
-
-/* 功能菜单 */
 .menu-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12rpx;
+  gap: 1vw;
 }
 
 .menu-card {
@@ -480,319 +1210,875 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20rpx 12rpx;
-  background: rgba(45, 55, 72, 0.5);
-  border: 1px solid rgba(113, 128, 150, 0.15);
-  border-radius: 12rpx;
-  gap: 8rpx;
+  padding: 2vh 1vw;
+  border-radius: 1.2vh;
+  gap: 0.8vh;
   transition: all 0.2s;
+  border: 1px solid rgba(113, 128, 150, 0.15);
 }
 
-.menu-card:active {
-  transform: scale(0.96);
-  background: rgba(45, 55, 72, 0.8);
-}
+.menu-card:active { transform: scale(0.96); }
 
 .menu-icon {
-  width: 56rpx;
-  height: 56rpx;
+  width: 5.5vh;
+  height: 5.5vh;
+  min-width: 40px;
+  min-height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26rpx;
-  border-radius: 12rpx;
+  border-radius: 1.2vh;
 }
 
-.menu-name {
-  font-size: 22rpx;
-  font-weight: 600;
-  color: #E2E8F0;
-}
-
-.menu-desc {
-  font-size: 16rpx;
-  color: rgba(255, 255, 255, 0.4);
-  text-align: center;
-}
+.menu-name { font-size: var(--text-xs); font-weight: 600; color: var(--color-border); }
+.menu-desc { font-size: var(--text-xs); color: rgba(255,255,255,0.4); text-align: center; }
 
 .menu-badge {
   position: absolute;
-  top: 8rpx;
-  right: 8rpx;
-  min-width: 32rpx;
-  height: 28rpx;
-  padding: 0 8rpx;
-  background: #F56565;
-  border-radius: 14rpx;
+  top: 0.8vh;
+  right: 0.8vw;
+  min-width: 2.5vh;
+  height: 2.2vh;
+  padding: 0 0.6vw;
+  background: var(--color-danger);
+  border-radius: 1.1vh;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.menu-badge text {
-  font-size: 16rpx;
-  color: #fff;
-  font-weight: 600;
-}
+.menu-badge text { font-size: var(--text-xs); color: #fff; font-weight: 600; }
 
-/* 房间列表 */
-.room-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10rpx;
-}
+.room-list { display: flex; flex-direction: column; gap: 1vh; }
 
 .room-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14rpx 16rpx;
-  background: rgba(45, 55, 72, 0.5);
+  padding: 1.5vh 1.2vw;
+  border-radius: 1.2vh;
   border: 1px solid rgba(113, 128, 150, 0.15);
-  border-radius: 10rpx;
+  transition: all 0.15s;
+  min-height: 7vh;
 }
 
-.room-info {
-  flex: 1;
-}
+.room-card:active { transform: scale(0.98); }
 
-.room-header {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
-  margin-bottom: 6rpx;
-}
-
-.room-name {
-  font-size: 22rpx;
-  font-weight: 600;
-  color: #E2E8F0;
-}
-
-.room-status {
-  padding: 2rpx 10rpx;
-  border-radius: 4rpx;
-  font-size: 16rpx;
-}
-
-.room-status.playing {
-  background: rgba(72, 187, 120, 0.15);
-  color: #48BB78;
-}
-
-.room-status.waiting {
-  background: rgba(237, 137, 54, 0.15);
-  color: #ED8936;
-}
-
-.room-meta {
-  display: flex;
-  gap: 16rpx;
-}
-
-.meta-item {
-  font-size: 18rpx;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.room-actions {
-  display: flex;
-  gap: 8rpx;
-}
+.room-info { flex: 1; min-width: 0; }
+.room-header { display: flex; align-items: center; gap: 0.8vw; margin-bottom: 0.5vh; }
+.room-name { font-size: var(--text-xs); font-weight: 600; color: var(--color-border); }
+.room-status { padding: 0.2vh 0.8vw; border-radius: 0.4vh; font-size: var(--text-xs); }
+.room-status.playing { background: rgba(72,187,120,0.15); color: var(--color-success); }
+.room-status.waiting { background: rgba(237,137,54,0.15); color: var(--color-gold-dark); }
+.room-meta { display: flex; gap: 1.2vw; }
+.meta-item { font-size: var(--text-xs); color: rgba(255,255,255,0.5); }
+.room-actions { display: flex; gap: 0.6vw; flex-shrink: 0; }
 
 .action-btn {
-  padding: 8rpx 16rpx;
-  background: rgba(99, 179, 237, 0.15);
-  border: 1px solid rgba(99, 179, 237, 0.3);
-  border-radius: 6rpx;
-  font-size: 18rpx;
-  color: #63B3ED;
+  padding: 0.6vh 1.2vw;
+  background: rgba(99,179,237,0.15);
+  border: 1px solid rgba(99,179,237,0.3);
+  border-radius: 0.6vh;
+  font-size: var(--text-xs);
+  color: var(--color-info);
 }
 
 .action-btn.action-danger {
-  background: rgba(245, 101, 101, 0.15);
-  border-color: rgba(245, 101, 101, 0.3);
-  color: #F56565;
+  background: rgba(245,101,101,0.15);
+  border-color: rgba(245,101,101,0.3);
+  color: var(--color-danger);
 }
 
-/* 审计日志 */
-.log-filter {
-  display: flex;
-  gap: 6rpx;
-}
-
-.filter-item {
-  padding: 6rpx 12rpx;
-  font-size: 18rpx;
-  color: rgba(255, 255, 255, 0.5);
-  border-radius: 4rpx;
-  transition: all 0.2s;
-}
-
-.filter-item.active {
-  background: rgba(113, 128, 150, 0.2);
-  color: #A0AEC0;
-}
-
-.log-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10rpx;
-}
-
-.log-item {
-  display: flex;
-  gap: 12rpx;
-  padding: 14rpx;
-  background: rgba(45, 55, 72, 0.4);
-  border: 1px solid rgba(113, 128, 150, 0.1);
-  border-radius: 10rpx;
-}
-
-.log-type {
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 8rpx;
+/* 弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.7);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18rpx;
+  z-index: 1000;
+  padding: 2vh;
+  padding-left: calc(2vh + env(safe-area-inset-left));
+  padding-right: calc(2vh + env(safe-area-inset-right));
+  padding-top: calc(2vh + env(safe-area-inset-top));
+  padding-bottom: calc(2vh + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.modal-content {
+  width: 80vw;
+  max-width: 90vw;
+  max-height: 80vh;
+  border-radius: 1.5vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-large {
+  width: 90vw;
+  max-width: 90vw;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2vh 1.5vw;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.modal-title { font-size: var(--text-sm); font-weight: 700; color: var(--color-border); }
+
+.modal-close-btn {
+  width: max(3.5vh, 44px);
+  height: max(3.5vh, 44px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+}
+
+.modal-body {
+  padding: 2vh 1.5vw;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 1vw;
+  margin-top: 2vh;
+}
+
+.btn-cancel, .btn-confirm {
+  flex: 1;
+  padding: 1.2vh;
+  text-align: center;
+  border-radius: 0.8vh;
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.btn-cancel {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.6);
+}
+
+.btn-confirm {
+  background: linear-gradient(135deg, var(--color-gold), var(--color-gold-dark));
+  color: var(--color-bg);
+}
+
+/* 搜索栏 */
+.search-bar {
+  display: flex;
+  gap: 0.8vw;
+  margin-bottom: 2vh;
+}
+
+.search-input {
+  flex: 1;
+  padding: 1vh 1vw;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 0.8vh;
+  font-size: var(--text-xs);
+  color: var(--color-border);
+}
+
+.search-btn {
+  padding: 1vh 1.5vw;
+  background: linear-gradient(135deg, #4299E1, var(--color-info));
+  border-radius: 0.8vh;
+  font-size: var(--text-xs);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* 数据列表 */
+.data-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1vh;
+}
+
+.data-item {
+  display: flex;
+  align-items: center;
+  gap: 1vw;
+  padding: 1.5vh 1.2vw;
+  border-radius: 1vh;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.data-avatar {
+  width: 4.5vh;
+  height: max(4.5vh, 44px);
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-text-muted), var(--color-bg-card));
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
-.log-type.user {
-  background: rgba(66, 153, 225, 0.15);
+.data-avatar text { font-size: var(--text-xs); color: #fff; font-weight: 700; }
+
+.agent-avatar { background: linear-gradient(135deg, var(--theme-primary), var(--theme-primary)); }
+.finance-avatar { background: linear-gradient(135deg, var(--color-gold-dark), var(--color-gold-dark)); }
+
+.data-info { flex: 1; min-width: 0; }
+.data-name { display: block; font-size: var(--text-xs); font-weight: 600; color: var(--color-border); margin-bottom: 0.3vh; }
+.data-sub { display: block; font-size: var(--text-xs); color: rgba(255,255,255,0.4); }
+
+.data-actions { display: flex; gap: 0.5vw; flex-shrink: 0; }
+
+.mini-btn {
+  padding: 0.5vh 1vw;
+  background: rgba(99,179,237,0.15);
+  border: 1px solid rgba(99,179,237,0.3);
+  border-radius: 0.5vh;
+  font-size: var(--text-xs);
+  color: var(--color-info);
 }
 
-.log-type.room {
-  background: rgba(72, 187, 120, 0.15);
+.mini-btn.btn-success { background: rgba(72,187,120,0.15); border-color: rgba(72,187,120,0.3); color: var(--color-success); }
+.mini-btn.btn-warn { background: rgba(237,137,54,0.15); border-color: rgba(237,137,54,0.3); color: var(--color-gold-dark); }
+.mini-btn.btn-danger { background: rgba(245,101,101,0.15); border-color: rgba(245,101,101,0.3); color: var(--color-danger); }
+
+.data-amount {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
-.log-type.system {
-  background: rgba(113, 128, 150, 0.15);
+.amount-positive { color: var(--color-success); }
+.amount-negative { color: var(--color-danger); }
+
+/* 财务统计 */
+.finance-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1vw;
+  margin-bottom: 2vh;
 }
 
-.log-type.finance {
-  background: rgba(237, 137, 54, 0.15);
+.finance-card {
+  padding: 1.5vh 1vw;
+  border-radius: 1vh;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  text-align: center;
 }
 
-.log-content {
+.finance-label { display: block; font-size: var(--text-xs); color: rgba(255,255,255,0.4); margin-bottom: 0.5vh; }
+.finance-value { display: block; font-size: var(--text-sm); font-weight: 700; color: var(--color-gold); }
+
+/* 日志筛选 */
+.log-filter { display: flex; gap: 0.5vw; margin-bottom: 1.5vh; }
+.filter-item {
+  padding: 0.5vh 1vw;
+  font-size: var(--text-xs);
+  color: rgba(255,255,255,0.5);
+  border-radius: 0.5vh;
+  transition: all 0.2s;
+}
+.filter-item.active { background: rgba(113,128,150,0.2); color: var(--color-text-muted); }
+
+.log-list { display: flex; flex-direction: column; gap: 1vh; }
+
+.log-item {
+  display: flex;
+  gap: 1vw;
+  padding: 1.5vh 1.2vw;
+  border-radius: 1.2vh;
+  border: 1px solid rgba(113, 128, 150, 0.1);
+}
+
+.log-type {
+  width: 4vh;
+  height: 4vh;
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 0.8vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.log-type.user { background: rgba(66,153,225,0.15); }
+.log-type.room { background: rgba(72,187,120,0.15); }
+.log-type.system { background: rgba(113,128,150,0.15); }
+.log-type.finance { background: rgba(237,137,54,0.15); }
+
+.log-content { flex: 1; min-width: 0; }
+.log-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.3vh; }
+.log-action { font-size: var(--text-xs); font-weight: 600; color: var(--color-border); }
+.log-time { font-size: var(--text-xs); color: rgba(255,255,255,0.3); font-family: monospace; }
+.log-detail { display: block; font-size: var(--text-xs); color: rgba(255,255,255,0.6); margin-bottom: 0.5vh; line-height: 1.4; }
+.log-meta { display: flex; gap: 1.2vw; }
+.log-operator, .log-ip { font-size: var(--text-xs); color: rgba(255,255,255,0.3); }
+
+/* 配置表单 */
+.config-group { margin-bottom: 2.5vh; }
+.config-group-title { display: block; font-size: var(--text-xs); font-weight: 600; color: var(--color-border); margin-bottom: 1.5vh; padding-bottom: 0.8vh; border-bottom: 1px solid rgba(255,255,255,0.1); }
+
+.config-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.2vh;
+}
+
+.config-label { font-size: var(--text-xs); color: rgba(255,255,255,0.7); }
+
+.config-input {
+  width: 15vw;
+  padding: 0.8vh 1vw;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 0.6vh;
+  font-size: var(--text-xs);
+  color: var(--color-border);
+}
+
+.config-textarea {
+  width: 100%;
+  height: 10vh;
+  padding: 1vh 1vw;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 0.8vh;
+  font-size: var(--text-xs);
+  color: var(--color-border);
+  box-sizing: border-box;
+}
+
+.config-actions { display: flex; gap: 1vw; margin-top: 2vh; }
+
+.config-btn {
+  flex: 1;
+  padding: 1.2vh;
+  text-align: center;
+  border-radius: 0.8vh;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.6);
+}
+
+.config-btn-primary {
+  background: linear-gradient(135deg, var(--color-gold), var(--color-gold-dark));
+  color: var(--color-bg);
+}
+
+/* 调整筹码表单 */
+.adjust-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5vh;
+  padding: 1.5vh;
+  background: rgba(255,255,255,0.03);
+  border-radius: 0.8vh;
+  margin-bottom: 2vh;
+}
+
+.adjust-user-info text { font-size: var(--text-xs); color: rgba(255,255,255,0.7); }
+
+.form-group { margin-bottom: 1.5vh; }
+.form-label { display: block; font-size: var(--text-xs); color: rgba(255,255,255,0.7); margin-bottom: 0.8vh; }
+.form-input {
+  width: 100%;
+  padding: 1vh 1vw;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 0.6vh;
+  font-size: var(--text-xs);
+  color: var(--color-border);
+}
+
+.empty-list { display: flex; align-items: center; justify-content: center; padding: 3vh 0; }
+.empty-text { font-size: var(--text-xs); color: rgba(255,255,255,0.4); }
+.bottom-spacing { height: 3vh; }
+
+/* ========== 权限管理弹窗 ========== */
+.modal-xlarge {
+  width: 90vw;
+  max-width: 110vh;
+  max-height: 85vh;
+}
+
+.permission-body {
+  display: flex;
+  flex-direction: column;
+  max-height: 70vh;
+  padding: 0;
+}
+
+.permission-role-tabs {
+  display: flex;
+  gap: 0.8vw;
+  padding: 1.5vh 1.5vw;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.permission-role-tab {
+  flex: 1;
+  min-width: 12vh;
+  padding: 1.2vh 1vw;
+  border-radius: 1vh;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  text-align: center;
+  transition: all 0.2s;
+
+  &.active {
+    background: rgba(236, 201, 75, 0.12);
+    border-color: rgba(236, 201, 75, 0.4);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+.role-tab-label {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-border);
+  margin-bottom: 0.3vh;
+
+  .active & {
+    color: var(--color-gold);
+  }
+}
+
+.role-tab-desc {
+  display: block;
+  font-size: var(--text-xs);
+  color: rgba(255,255,255,0.4);
+}
+
+.permission-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2vh 1.5vw;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.permission-hint {
+  font-size: var(--text-xs);
+  color: rgba(255,255,255,0.4);
+}
+
+.permission-actions {
+  display: flex;
+  gap: 0.8vw;
+}
+
+.permission-matrix-scroll {
+  flex: 1;
+  padding: 1.5vh 1.5vw;
+  box-sizing: border-box;
+}
+
+.permission-category {
+  margin-bottom: 2vh;
+}
+
+.permission-category-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1vh;
+}
+
+.category-title {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.category-count {
+  font-size: var(--text-xs);
+  color: rgba(255,255,255,0.3);
+}
+
+.permission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6vh;
+}
+
+.permission-item {
+  display: flex;
+  align-items: center;
+  gap: 1.2vw;
+  padding: 1.2vh 1vw;
+  border-radius: 0.8vh;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: all 0.2s;
+
+  &.enabled {
+    background: rgba(236, 201, 75, 0.05);
+    border-color: rgba(236, 201, 75, 0.15);
+  }
+
+  &:active {
+    transform: scale(0.99);
+  }
+}
+
+.perm-icon-wrap {
+  width: 4vh;
+  height: 4vh;
+  border-radius: 0.8vh;
+  background: rgba(255,255,255,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.perm-info {
   flex: 1;
   min-width: 0;
 }
 
-.log-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4rpx;
+.perm-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-border);
+  margin-bottom: 0.2vh;
 }
 
-.log-action {
-  font-size: 20rpx;
-  font-weight: 600;
-  color: #E2E8F0;
-}
-
-.log-time {
-  font-size: 16rpx;
-  color: rgba(255, 255, 255, 0.3);
+.perm-key {
+  display: block;
+  font-size: var(--text-xs);
+  color: rgba(255,255,255,0.25);
   font-family: monospace;
 }
 
-.log-detail {
+.perm-switch {
+  width: 5vh;
+  height: 2.8vh;
+  border-radius: 1.4vh;
+  background: rgba(255,255,255,0.1);
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+
+  &.on {
+    background: rgba(236, 201, 75, 0.6);
+  }
+}
+
+.perm-switch-thumb {
+  position: absolute;
+  top: 0.3vh;
+  left: 0.3vh;
+  width: 2.2vh;
+  height: 2.2vh;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+
+  .perm-switch.on & {
+    transform: translateX(2.2vh);
+  }
+}
+
+.permission-footer-note {
+  padding: 1.2vh 1.5vw;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+
+  text {
+    font-size: var(--text-xs);
+    color: rgba(255,255,255,0.3);
+  }
+}
+
+.btn-ghost {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.6);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-gold), #D69E2E);
+  color: var(--color-bg);
+  font-weight: 600;
+
+  &.disabled {
+    opacity: 0.5;
+  }
+}
+
+/* ========== 客服管理 ========== */
+.cs-tabs {
+  display: flex;
+  gap: 1vh;
+  margin-bottom: 2vh;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding-bottom: 1vh;
+}
+
+.cs-tab {
+  padding: 0.8vh 2vh;
+  border-radius: 0.8vh;
+  font-size: var(--text-xs);
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &.active {
+    background: rgba(56, 178, 172, 0.15);
+    color: var(--color-info);
+    font-weight: 600;
+  }
+}
+
+.cs-stats-bar {
+  display: flex;
+  gap: 2vh;
+  margin-bottom: 2vh;
+  padding: 1.5vh;
+  background: rgba(255,255,255,0.03);
+  border-radius: 1vh;
+}
+
+.cs-stat-item {
+  flex: 1;
+  text-align: center;
+}
+
+.cs-stat-value {
   display: block;
-  font-size: 18rpx;
-  color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 6rpx;
-  line-height: 1.4;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-info);
 }
 
-.log-meta {
-  display: flex;
-  gap: 16rpx;
+.cs-stat-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: rgba(255,255,255,0.4);
+  margin-top: 0.3vh;
 }
 
-.log-operator,
-.log-ip {
-  font-size: 14rpx;
-  color: rgba(255, 255, 255, 0.3);
+.cs-staff-list {
+  max-height: 50vh;
+  overflow-y: auto;
 }
 
-/* 系统状态 */
-.system-status {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-}
-
-.status-item {
-  padding: 14rpx 16rpx;
-  background: rgba(45, 55, 72, 0.4);
-  border: 1px solid rgba(113, 128, 150, 0.1);
-  border-radius: 10rpx;
-}
-
-.status-header {
+.cs-staff-card {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10rpx;
+  gap: 1.5vh;
+  padding: 1.5vh;
+  margin-bottom: 1vh;
+  background: rgba(255,255,255,0.03);
+  border-radius: 1vh;
+  border: 1px solid rgba(255,255,255,0.06);
 }
 
-.status-name {
-  font-size: 20rpx;
-  color: #E2E8F0;
+.cs-staff-avatar {
+  width: 5vh;
+  height: 5vh;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-info), #319795);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cs-staff-avatar-text {
+  color: #fff;
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 
-.status-indicator {
+.cs-staff-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cs-staff-name {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: #fff;
+}
+
+.cs-staff-meta {
+  display: block;
+  font-size: var(--text-xs);
+  color: rgba(255,255,255,0.4);
+  margin-top: 0.3vh;
+}
+
+.cs-staff-status {
+  padding: 0.4vh 1.2vh;
+  border-radius: 2vh;
+  font-size: var(--text-xs);
+  font-weight: 600;
+
+  &.online {
+    background: rgba(72, 187, 120, 0.15);
+    color: var(--color-success);
+  }
+
+  &.offline {
+    background: rgba(245, 101, 101, 0.15);
+    color: var(--color-danger);
+  }
+}
+
+.cs-toggle-btn {
+  padding: 0.6vh 1.5vh;
+  border-radius: 0.6vh;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+
+  &.btn-on {
+    background: rgba(72, 187, 120, 0.2);
+    color: var(--color-success);
+    border: 1px solid rgba(72, 187, 120, 0.3);
+  }
+
+  &.btn-off {
+    background: rgba(245, 101, 101, 0.2);
+    color: var(--color-danger);
+    border: 1px solid rgba(245, 101, 101, 0.3);
+  }
+}
+
+.cs-search-bar {
+  display: flex;
+  gap: 1vh;
+  margin-bottom: 2vh;
+}
+
+.cs-search-input {
+  flex: 1;
+  padding: 1vh 1.5vh;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 0.8vh;
+  color: #fff;
+  font-size: var(--text-xs);
+}
+
+.cs-search-btn {
+  padding: 1vh 2vh;
+  background: linear-gradient(135deg, var(--color-info), #319795);
+  color: #fff;
+  border-radius: 0.8vh;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cs-messages-list {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.cs-message-item {
+  padding: 1.2vh;
+  margin-bottom: 1vh;
+  background: rgba(255,255,255,0.03);
+  border-radius: 0.8vh;
+  border-left: 3px solid var(--color-info);
+}
+
+.cs-message-header {
   display: flex;
   align-items: center;
-  gap: 6rpx;
+  gap: 1vh;
+  margin-bottom: 0.5vh;
 }
 
-.indicator-dot {
-  width: 10rpx;
-  height: 10rpx;
-  border-radius: 50%;
+.cs-message-from {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-info);
 }
 
-.status-indicator.normal .indicator-dot {
-  background: #48BB78;
-  box-shadow: 0 0 6rpx rgba(72, 187, 120, 0.5);
+.cs-message-to {
+  font-size: var(--text-xs);
+  color: rgba(255,255,255,0.4);
 }
 
-.status-indicator.error .indicator-dot {
-  background: #F56565;
-  box-shadow: 0 0 6rpx rgba(245, 101, 101, 0.5);
+.cs-message-time {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: rgba(255,255,255,0.3);
 }
 
-.indicator-text {
-  font-size: 16rpx;
-  color: rgba(255, 255, 255, 0.5);
+.cs-message-content {
+  font-size: var(--text-xs);
+  color: rgba(255,255,255,0.7);
+  line-height: 1.5;
 }
 
-.status-bar {
-  height: 8rpx;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4rpx;
-  overflow: hidden;
-  margin-bottom: 6rpx;
+.cs-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5vh;
+  margin-bottom: 2vh;
 }
 
-.bar-fill {
-  height: 100%;
-  border-radius: 4rpx;
-  transition: width 0.3s ease;
+.cs-stat-card {
+  padding: 2vh;
+  background: rgba(255,255,255,0.03);
+  border-radius: 1vh;
+  border: 1px solid rgba(255,255,255,0.06);
+  text-align: center;
 }
 
-.status-usage {
-  font-size: 16rpx;
-  color: rgba(255, 255, 255, 0.4);
+.cs-stat-card-value {
+  display: block;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-info);
 }
 
-.bottom-spacing {
-  height: 40rpx;
+.cs-stat-card-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: rgba(255,255,255,0.4);
+  margin-top: 0.5vh;
+}
+
+.cs-stats-refresh {
+  text-align: center;
+}
+
+.cs-loading,
+.cs-empty {
+  padding: 4vh 0;
+  text-align: center;
+  color: rgba(255,255,255,0.3);
+  font-size: var(--text-xs);
 }
 </style>

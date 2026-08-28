@@ -2,14 +2,18 @@
  * V-Poker 五大游戏主题配置系统
  * 五座斗兽场视觉定义
  */
+import { cdnUrl } from '../utils/cdn.js'
 
 export const GAME_THEMES = {
-  // ========== 紫禁之巅·斗兽场（抢庄牛牛） ==========
+  // ========== 紫禁之巅·斗兽场（抢庄牛牛）==========
   forbidden_city: {
     id: 'forbidden_city',
     name: '紫禁之巅·斗兽场',
     gameType: 'niuniu',
     description: '黑金帝王气场 · 蛛网裂纹 · 破屏金光',
+
+    // 背景图
+    backgroundImage: cdnUrl('/static/images/themes/forbidden_city/bg.jpg'),
 
     // 颜色系统
     colors: {
@@ -48,7 +52,7 @@ export const GAME_THEMES = {
       opacity: { min: 0.3, max: 0.7 },
     },
 
-    // 开牌高潮动画
+    // 开牌高光动画
     openCardEffect: {
       type: 'gold_burst', // 金光炸裂
       duration: 600,
@@ -70,8 +74,8 @@ export const GAME_THEMES = {
 
     // 字体
     fonts: {
-      title: '"Kangxi Dictionary", "STKaiti", serif',
-      number: 'Georgia, "Times New Roman", serif',
+      title: '"ZCOOLXiaoWei", "STKaiti", "KaiTi", serif',
+      number: '"PlayfairDisplay", Georgia, "Times New Roman", serif',
       body: '-apple-system, sans-serif',
     },
 
@@ -82,12 +86,15 @@ export const GAME_THEMES = {
     },
   },
 
-  // ========== 江南百景·青玉案（抢庄三公） ==========
+  // ========== 江南百景·青玉案（抢庄三公）==========
   jiangnan: {
     id: 'jiangnan',
     name: '江南百景·青玉案',
     gameType: 'sangong',
     description: '月白天青 · 水墨意境 · 水波涟漪',
+
+    // 背景图
+    backgroundImage: cdnUrl('/static/images/themes/jiangnan/bg.jpg'),
 
     colors: {
       bgPrimary: '#E8F4F8',
@@ -142,8 +149,8 @@ export const GAME_THEMES = {
     },
 
     fonts: {
-      title: '"瘦金体", "STSong", serif',
-      number: 'Georgia, "Times New Roman", serif',
+      title: '"MaShanZheng", "STSong", "SimSun", serif',
+      number: '"PlayfairDisplay", Georgia, "Times New Roman", serif',
       body: '-apple-system, sans-serif',
     },
 
@@ -153,12 +160,15 @@ export const GAME_THEMES = {
     },
   },
 
-  // ========== 机械迷城·流水线（通比牛牛） ==========
+  // ========== 机械迷城·流水线（通比牛牛）==========
   steampunk: {
     id: 'steampunk',
     name: '机械迷城·流水线',
     gameType: 'tbnn',
     description: '蒸汽朋克 · 工业齿轮 · 机械臂冲压',
+
+    // 背景图
+    backgroundImage: cdnUrl('/static/images/themes/steampunk/bg.jpg'),
 
     colors: {
       bgPrimary: '#2D2D2D',
@@ -214,8 +224,8 @@ export const GAME_THEMES = {
     },
 
     fonts: {
-      title: '"OCR-A", "Courier New", monospace',
-      number: '"OCR-A", monospace',
+      title: '"ShareTechMono", "OCR-A", "Courier New", monospace',
+      number: '"ShareTechMono", "Courier New", monospace',
       body: '-apple-system, sans-serif',
     },
 
@@ -225,12 +235,15 @@ export const GAME_THEMES = {
     },
   },
 
-  // ========== 雾都夜话·黑胶密房（炸金花） ==========
+  // ========== 雾都夜话·黑胶密房（炸金花）==========
   noir: {
     id: 'noir',
     name: '雾都夜话·黑胶密房',
     gameType: 'jinhua',
-    description: '聚光灯暗影 · 心理战 · 黑胶密房',
+    description: '聚光灯影 · 心理战 · 黑胶密房',
+
+    // 背景图
+    backgroundImage: cdnUrl('/static/images/themes/noir/bg.jpg'),
 
     colors: {
       bgPrimary: '#0A0A0A',
@@ -287,7 +300,7 @@ export const GAME_THEMES = {
 
     // 看牌动作
     lookCardEffect: {
-      type: 'snake_tongue', // 毒蛇吐信
+      type: 'snake_tongue', // 毒蛇信子
       duration: 200,
       slideDistance: 4,
       tiltAngle: 5,
@@ -303,8 +316,8 @@ export const GAME_THEMES = {
     },
 
     fonts: {
-      title: '"Courier New", monospace',
-      number: 'Georgia, "Times New Roman", serif',
+      title: '"ShareTechMono", "Courier New", monospace',
+      number: '"PlayfairDisplay", Georgia, "Times New Roman", serif',
       body: '-apple-system, sans-serif',
     },
 
@@ -314,12 +327,15 @@ export const GAME_THEMES = {
     },
   },
 
-  // ========== 华尔街之狼·信息交易所（德州扑克） ==========
+  // ========== 华尔街之狼·信息交易所（德州扑克）==========
   wallstreet: {
     id: 'wallstreet',
     name: '华尔街之狼·信息交易所',
     gameType: 'texas',
     description: '半透明玻璃 · 数据跳动 · 理性竞技',
+
+    // 背景图
+    backgroundImage: cdnUrl('/static/images/themes/wallstreet/bg.jpg'),
 
     colors: {
       bgPrimary: '#0F1923',
@@ -386,8 +402,8 @@ export const GAME_THEMES = {
     },
 
     fonts: {
-      title: '"JetBrains Mono", "Courier New", monospace',
-      number: '"JetBrains Mono", monospace',
+      title: '"JetBrainsMono", "Courier New", monospace',
+      number: '"JetBrainsMono", "Courier New", monospace',
       body: '-apple-system, sans-serif',
     },
 

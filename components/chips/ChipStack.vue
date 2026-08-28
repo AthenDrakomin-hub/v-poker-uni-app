@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="chip-stack" :class="chipSize" :style="stackStyle">
     <view
       v-for="(chip, index) in visibleChips"
@@ -7,6 +7,8 @@
       :class="chip.color"
       :style="getChipStyle(index)"
     >
+      <!-- 筹码图片纹理叠加 -->
+      <image class="chip-texture" :src="$cdn('/static/images/chips/chip_set.jpg')" mode="aspectFill"></image>
       <view class="chip-inner">
         <text class="chip-value">{{ chip.value }}</text>
       </view>
@@ -116,9 +118,13 @@ export default {
   methods: {
     formatPoints,
     getChipStyle(index) {
+      const total = this.visibleChips.length
+      // 上层筹码略大（近大远小，3D 透视感）
+      const scale = 1 + (index / Math.max(total, 1)) * 0.06
       return {
-        bottom: index * 6 + 'rpx',
+        bottom: index * 5 + 'rpx',
         zIndex: index,
+        transform: `translateX(-50%) scale(${scale})`,
         animationDelay: this.animate ? (index * 50) + 'ms' : '0ms'
       }
     }
@@ -132,6 +138,7 @@ export default {
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  perspective: 600px;
 }
 
 .size-sm { width: 50rpx; height: 50rpx; }
@@ -146,7 +153,26 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.4), inset 0 1rpx 2rpx rgba(255, 255, 255, 0.3);
+  /* 3D 厚度：多层阴影模拟筹码侧边 */
+  box-shadow:
+    0 2rpx 4rpx rgba(0, 0, 0, 0.4),
+    0 4rpx 0 rgba(0, 0, 0, 0.2),
+    0 6rpx 0 rgba(0, 0, 0, 0.15),
+    inset 0 1rpx 2rpx rgba(255, 255, 255, 0.4),
+    inset 0 -2rpx 4rpx rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  transform-style: preserve-3d;
+}
+
+.chip-texture {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.18;
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 .size-sm .chip { width: 40rpx; height: 40rpx; }
@@ -163,9 +189,9 @@ export default {
   justify-content: center;
 }
 
-.size-sm .chip-value { font-size: 14rpx; }
-.size-md .chip-value { font-size: 18rpx; }
-.size-lg .chip-value { font-size: 22rpx; }
+.size-sm .chip-value { font-size: var(--text-sm); }
+.size-md .chip-value { font-size: var(--text-lg); }
+.size-lg .chip-value { font-size: var(--text-lg); }
 
 .chip-value {
   font-weight: 700;
@@ -174,15 +200,15 @@ export default {
 }
 
 /* 筹码颜色 */
-.chip-black { background: linear-gradient(145deg, #2d2d2d, #1a1a1a); border: 2rpx solid #444; }
+.chip-black { background: linear-gradient(145deg, #2d2d2d, var(--color-bg-card)); border: 2rpx solid #444; }
 .chip-purple { background: linear-gradient(145deg, #9333ea, #7e22ce); border: 2rpx solid #a855f7; }
-.chip-green { background: linear-gradient(145deg, #16a34a, #15803d); border: 2rpx solid #22c55e; }
-.chip-blue { background: linear-gradient(145deg, #2563eb, #1d4ed8); border: 2rpx solid #3b82f6; }
+.chip-green { background: linear-gradient(145deg, var(--color-success), #15803d); border: 2rpx solid var(--color-success); }
+.chip-blue { background: linear-gradient(145deg, #2563eb, #1d4ed8); border: 2rpx solid var(--color-info); }
 .chip-red { background: linear-gradient(145deg, #dc2626, #b91c1c); border: 2rpx solid #ef4444; }
 .chip-yellow { background: linear-gradient(145deg, #eab308, #ca8a04); border: 2rpx solid #facc15; }
-.chip-white { background: linear-gradient(145deg, #f8fafc, #e2e8f0); border: 2rpx solid #fff; }
+.chip-white { background: linear-gradient(145deg, #f8fafc, var(--color-border)); border: 2rpx solid #fff; }
 .chip-white .chip-value { color: #333; text-shadow: none; }
-.chip-gray { background: linear-gradient(145deg, #6b7280, #4b5563); border: 2rpx solid #9ca3af; }
+.chip-gray { background: linear-gradient(145deg, var(--color-text-muted), #4b5563); border: 2rpx solid var(--color-text-muted); }
 
 /* 金额标签 */
 .chip-label {
@@ -194,9 +220,9 @@ export default {
 }
 
 .label-text {
-  font-size: 20rpx;
+  font-size: var(--text-lg);
   font-weight: 600;
-  color: #FFD700;
+  color: var(--color-gold);
   text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.8);
 }
 
@@ -213,16 +239,15 @@ export default {
 }
 
 .chip {
-  animation: chipIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: chipIn3D 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-@keyframes chipIn {
+@keyframes chipIn3D {
   0% {
-    transform: translateX(-50%) scale(0);
+    transform: translateX(-50%) perspective(600px) translateZ(-40px) scale(0.5);
     opacity: 0;
   }
   100% {
-    transform: translateX(-50%) scale(1);
     opacity: 1;
   }
 }

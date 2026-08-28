@@ -4,6 +4,7 @@
  */
 import { reactive, ref } from 'vue'
 import { getMe, logout as apiLogout } from '../api/auth.js'
+import { setUserPermissions, clearUserPermissions } from '../utils/featurePermissions.js'
 
 // 用户状态
 export const userState = reactive({
@@ -11,7 +12,7 @@ export const userState = reactive({
   id: null,
   account: '',
   nickname: '',
-  role: 'player', // player / agent / general_agent / admin / customer_service
+  role: 'player', // player / agent / top_agent / admin / customer_service
   avatar: '',
   points: 0, // 筹码余额
   invitedById: null,
@@ -93,7 +94,11 @@ export async function fetchUserInfo() {
   userState.isLoading = true
   try {
     const data = await getMe()
-    updateUserInfo(data)
+    updateUserInfo(data.user || data)
+    // 设置服务器返回的功能权限缓存
+    if (data.permissions) {
+      setUserPermissions(data.permissions)
+    }
     userState.isLoggedIn = true
     return data
   } catch (e) {
@@ -152,6 +157,7 @@ export function clearUserState() {
   userState.isLoggedIn = false
   userState.mustChangePassword = false
   userState.error = null
+  clearUserPermissions()
   uni.removeStorageSync('vpoker_token')
 }
 
@@ -166,7 +172,7 @@ export function hasRole(role) {
  * 检查是否是代理及以上
  */
 export function isAgentOrAbove() {
-  return ['agent', 'general_agent', 'admin'].includes(userState.role)
+  return ['agent', 'top_agent', 'admin'].includes(userState.role)
 }
 
 /**

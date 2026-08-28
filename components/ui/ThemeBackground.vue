@@ -3,6 +3,16 @@
     <!-- 基础渐变背景 -->
     <view class="bg-base" :style="baseStyle"></view>
 
+    <!-- 主题背景图 -->
+    <image
+      v-if="theme.backgroundImage"
+      class="bg-image"
+      :src="theme.backgroundImage"
+      mode="aspectFill"
+    ></image>
+    <!-- 背景图遮罩（确保牌桌和文字清晰） -->
+    <view v-if="theme.backgroundImage" class="bg-image-overlay"></view>
+
     <!-- 牌桌椭圆 -->
     <view class="table-ellipse">
       <view class="table-felt" :style="feltStyle"></view>
@@ -147,6 +157,26 @@ export default {
   position: absolute;
   width: 100%;
   height: 100%;
+}
+
+/* 主题背景图 */
+.bg-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.bg-image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1;
 }
 
 /* 牌桌椭圆 */

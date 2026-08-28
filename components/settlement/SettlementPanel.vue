@@ -8,8 +8,26 @@
       <!-- 标题 -->
       <view class="panel-header">
         <view class="header-line"></view>
-        <text class="header-title gold-text">本局结算</text>
+        <text class="header-title gold-text">{{ isFinal ? '总结算' : '本局结算' }}</text>
         <view class="header-line"></view>
+      </view>
+
+      <!-- 总结算：累计数据 -->
+      <view v-if="isFinal && summary" class="summary-section">
+        <view class="summary-row">
+          <view class="summary-item">
+            <text class="summary-label">局数</text>
+            <text class="summary-value">{{ summary.roundNo }} / {{ summary.totalRounds }}</text>
+          </view>
+          <view class="summary-item">
+            <text class="summary-label">总流水</text>
+            <text class="summary-value gold">{{ summary.totalFlow || 0 }}</text>
+          </view>
+          <view class="summary-item">
+            <text class="summary-label">总抽水</text>
+            <text class="summary-value">{{ summary.totalRake || 0 }}</text>
+          </view>
+        </view>
       </view>
 
       <!-- 玩家结算结果 -->
@@ -19,6 +37,7 @@
           :key="index"
           class="result-item"
           :class="{ 'result-winner': result.amount > 0, 'result-loser': result.amount < 0 }"
+          :style="{ animationDelay: (index * 80 + 200) + 'ms' }"
         >
           <view class="result-player">
             <view class="player-avatar" :style="{ background: getAvatarColor(result.name) }">
@@ -33,7 +52,7 @@
             <text class="amount-text" :class="result.amount > 0 ? 'amount-win' : 'amount-lose'">
               {{ result.amount > 0 ? '+' : '' }}{{ result.amount }}
             </text>
-            <text class="amount-label">筹码</text>
+            <text class="amount-label">{{ isFinal ? '净输赢' : '筹码' }}</text>
           </view>
         </view>
       </view>
@@ -57,7 +76,13 @@
 
       <!-- 底部操作 -->
       <view class="panel-footer">
-        <button class="btn-continue" @click="handleContinue">
+        <button v-if="isFinal && isHost" class="btn-continue btn-final" @click="handleContinue">
+          <text>续开房间</text>
+        </button>
+        <button v-else-if="isFinal && !isHost" class="btn-continue btn-wait" disabled>
+          <text>等待房主续开...</text>
+        </button>
+        <button v-else class="btn-continue" @click="handleContinue">
           <text>继续游戏</text>
         </button>
       </view>
@@ -99,6 +124,21 @@ export default {
       type: Boolean,
       default: false
     },
+    // 是否总结算（最后一局）
+    isFinal: {
+      type: Boolean,
+      default: false
+    },
+    // 总结算累计数据
+    summary: {
+      type: Object,
+      default: () => ({})
+    },
+    // 当前用户是否房主（总结算时显示续开按钮）
+    isHost: {
+      type: Boolean,
+      default: false
+    },
   },
   data() {
     return {
@@ -131,11 +171,11 @@ export default {
     // 获取头像颜色
     getAvatarColor(name) {
       const colors = [
-        'linear-gradient(135deg, #667eea, #764ba2)',
+        'linear-gradient(135deg, var(--theme-primary), #764ba2)',
         'linear-gradient(135deg, #f093fb, #f5576c)',
         'linear-gradient(135deg, #4facfe, #00f2fe)',
-        'linear-gradient(135deg, #43e97b, #38f9d7)',
-        'linear-gradient(135deg, #fa709a, #fee140)',
+        'linear-gradient(135deg, #43e97b, var(--color-info))',
+        'linear-gradient(135deg, #fa709a, var(--color-gold))',
         'linear-gradient(135deg, #30cfd0, #330867)',
       ]
       let hash = 0
@@ -159,6 +199,12 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 2vh;
+  padding-left: calc(2vh + env(safe-area-inset-left));
+  padding-right: calc(2vh + env(safe-area-inset-right));
+  padding-top: calc(2vh + env(safe-area-inset-top));
+  padding-bottom: calc(2vh + env(safe-area-inset-bottom));
+  box-sizing: border-box;
 }
 
 .panel-overlay {
@@ -182,12 +228,23 @@ export default {
   padding: 32rpx;
   box-shadow: 0 0 60rpx rgba(255, 215, 0, 0.15), 0 20rpx 60rpx rgba(0, 0, 0, 0.5);
   overflow-y: auto;
-  animation: panelEnter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-style: preserve-3d;
+  animation: panelEnter3D 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@keyframes panelEnter {
-  0% { opacity: 0; transform: scale(0.9) translateY(20rpx); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
+@keyframes panelEnter3D {
+  0% {
+    opacity: 0;
+    transform: perspective(1000px) rotateX(-80deg) translateY(60rpx) scale(0.9);
+  }
+  60% {
+    opacity: 1;
+    transform: perspective(1000px) rotateX(5deg) translateY(-10rpx) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1000px) rotateX(0) translateY(0) scale(1);
+  }
 }
 
 /* 标题 */
@@ -206,7 +263,7 @@ export default {
 }
 
 .header-title {
-  font-size: 36rpx;
+  font-size: var(--text-3xl);
   font-weight: 700;
   letter-spacing: 8rpx;
   white-space: nowrap;
@@ -227,6 +284,19 @@ export default {
   border-radius: 12rpx;
   border: 1px solid rgba(255, 255, 255, 0.05);
   transition: all 0.3s ease;
+  opacity: 0;
+  animation: resultItemIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes resultItemIn {
+  0% {
+    opacity: 0;
+    transform: perspective(800px) rotateX(-45deg) translateX(-40rpx);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(800px) rotateX(0) translateX(0);
+  }
 }
 
 .result-winner {
@@ -254,14 +324,14 @@ export default {
 }
 
 .avatar-text {
-  font-size: 22rpx;
+  font-size: var(--text-lg);
   font-weight: 700;
   color: #fff;
 }
 
 .player-name {
-  font-size: 26rpx;
-  color: #e8e8e8;
+  font-size: var(--text-xl);
+  color: var(--color-text);
   font-weight: 600;
   max-width: 160rpx;
   overflow: hidden;
@@ -270,7 +340,7 @@ export default {
 }
 
 .winner-badge {
-  font-size: 24rpx;
+  font-size: var(--text-xl);
   animation: winnerBounce 1s ease-in-out infinite;
 }
 
@@ -286,22 +356,22 @@ export default {
 }
 
 .amount-text {
-  font-size: 32rpx;
+  font-size: var(--text-2xl);
   font-weight: 700;
   font-family: Georgia, serif;
 }
 
 .amount-win {
-  color: #4ADE80;
+  color: var(--color-success);
   text-shadow: 0 0 10rpx rgba(74, 222, 128, 0.5);
 }
 
 .amount-lose {
-  color: #FF6B6B;
+  color: var(--color-danger);
 }
 
 .amount-label {
-  font-size: 18rpx;
+  font-size: var(--text-lg);
   color: rgba(255, 255, 255, 0.4);
 }
 
@@ -320,7 +390,7 @@ export default {
 }
 
 .divider-text {
-  font-size: 22rpx;
+  font-size: var(--text-lg);
   color: rgba(255, 215, 0, 0.7);
   letter-spacing: 4rpx;
 }
@@ -345,9 +415,9 @@ export default {
   width: 240rpx;
   height: 72rpx;
   line-height: 72rpx;
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-  color: #1a1a1a;
-  font-size: 28rpx;
+  background: linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-dark) 100%);
+  color: var(--color-bg-card);
+  font-size: var(--text-2xl);
   font-weight: 700;
   border-radius: 36rpx;
   border: none;
@@ -361,9 +431,52 @@ export default {
 
 /* 金色文字 */
 .gold-text {
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  background: linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-dark) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* 总结算累计数据 */
+.summary-section {
+  margin-bottom: 20rpx;
+  padding: 20rpx;
+  background: rgba(255, 215, 0, 0.06);
+  border: 1rpx solid rgba(255, 215, 0, 0.15);
+  border-radius: 12rpx;
+}
+.summary-row {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+}
+.summary-label {
+  font-size: var(--text-lg);
+  color: rgba(255, 255, 255, 0.5);
+}
+.summary-value {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: #fff;
+}
+.summary-value.gold {
+  color: var(--color-gold);
+}
+
+/* 总结算按钮变体 */
+.btn-final {
+  background: linear-gradient(135deg, var(--color-gold), var(--color-gold-dark)) !important;
+  color: var(--color-bg-card) !important;
+}
+.btn-wait {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  opacity: 0.7;
 }
 </style>

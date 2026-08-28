@@ -1,26 +1,26 @@
-/**
+﻿/**
  * V-Poker UNI-APP 全局样式变量
  * 四大意识流设计系统
  */
 
 /* ===== 主题色 ===== */
-$vp-gold: #FFD700;
-$vp-amber: #FFBF00;
+$vp-gold: var(--color-gold);
+$vp-amber: var(--color-gold);
 $vp-orange: #FF8C00;
-$vp-purple: #6B46C1;
-$vp-blue-gray: #4A5568;
-$vp-iron-gray: #2D3748;
-$vp-cyan: #00D4FF;
-$vp-red: #FF6B6B;
-$vp-green: #4ADE80;
+$vp-purple: var(--theme-primary);
+$vp-blue-gray: var(--color-text-muted);
+$vp-iron-gray: var(--color-bg-card);
+$vp-cyan: var(--color-info);
+$vp-red: var(--color-danger);
+$vp-green: var(--color-success);
 
 /* ===== 背景色 ===== */
-$vp-bg-dark: #0a0a0a;
+$vp-bg-dark: var(--color-bg);
 $vp-bg-card: rgba(255, 255, 255, 0.06);
 $vp-bg-glass: rgba(255, 255, 255, 0.08);
 
 /* ===== 文字色 ===== */
-$vp-text-primary: #e8e8e8;
+$vp-text-primary: var(--color-text);
 $vp-text-secondary: rgba(255, 255, 255, 0.7);
 $vp-text-muted: rgba(255, 255, 255, 0.5);
 $vp-text-disabled: rgba(255, 255, 255, 0.3);

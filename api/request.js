@@ -1,8 +1,18 @@
-/**
+﻿/**
  * V-Poker API 请求封装
- * 支持 Token 认证、错误处理、设备ID
+ * 支持 Token 认证、错误处理、设备ID、自动重试
  */
 import { API_CONFIG } from './config.js'
+
+// 401跳转防抖标记，避免重复reLaunch导致导航冲突
+let isRedirectingToLogin = false
+
+// 可重试的状态码（网络错误/5xx/429限流）
+const RETRYABLE_STATUSES = [0, 429, 500, 502, 503, 504]
+const DEFAULT_RETRY_COUNT = 2
+const DEFAULT_RETRY_DELAY = 800
+const NETWORK_ERROR_INTERVAL = 2000
+let lastNetworkErrorTime = 0
 
 // 获取Token
 function getToken() {
@@ -75,7 +85,7 @@ function requestInterceptor(options) {
 }
 
 // 响应拦截器
-function responseInterceptor(response) {
+function responseInterceptor(response, options = {}) {
   const { statusCode, data } = response
 
   // 网络错误
@@ -89,12 +99,18 @@ function responseInterceptor(response) {
 
   // 401未授权
   if (statusCode === 401) {
-    clearToken()
-    // 跳转到登录页
-    uni.reLaunch({ url: '/pages/login/login' })
+    if (!options.skipAuthRedirect) {
+      clearToken()
+      // 防抖：避免多个请求同时401导致重复reLaunch导航冲突
+      if (!isRedirectingToLogin) {
+        isRedirectingToLogin = true
+        uni.reLaunch({ url: '/pages/login/login' })
+        setTimeout(() => { isRedirectingToLogin = false }, 2000)
+      }
+    }
     return {
       success: false,
-      error: '登录已过期，请重新登录',
+      error: data?.error || (options.skipAuthRedirect ? '账号或密码错误' : '登录已过期，请重新登录'),
       statusCode: 401
     }
   }
@@ -103,7 +119,7 @@ function responseInterceptor(response) {
   if (statusCode === 403) {
     return {
       success: false,
-      error: '没有权限执行此操作',
+      error: data?.error || '没有权限执行此操作',
       statusCode: 403
     }
   }
@@ -153,8 +169,8 @@ function responseInterceptor(response) {
   }
 }
 
-// 核心请求方法
-function request(options) {
+// 核心请求方法（支持重试）
+function request(options, attempt = 0) {
   return new Promise((resolve, reject) => {
     // 请求拦截
     const finalOptions = requestInterceptor({
@@ -168,34 +184,61 @@ function request(options) {
     uni.request({
       ...finalOptions,
       success: (response) => {
-        const result = responseInterceptor(response)
+        const result = responseInterceptor(response, options)
         if (result.success) {
           resolve(result.data)
         } else {
-          // 显示错误提示（除非静默）
-          if (!options.silent) {
+          // 判断是否可重试
+          const retryCount = options.retry ?? DEFAULT_RETRY_COUNT
+          const canRetry = RETRYABLE_STATUSES.includes(result.statusCode) && attempt < retryCount && !options.silent
+          if (canRetry) {
+            const delay = (options.retryDelay || DEFAULT_RETRY_DELAY) * Math.pow(2, attempt)
+            setTimeout(() => {
+              request(options, attempt + 1).then(resolve).catch(reject)
+            }, delay)
+            return
+          }
+          // 显示错误提示（除非静默；404资源不存在静默处理，避免工作台频繁弹toast）
+          if (!options.silent && result.statusCode !== 404) {
             uni.showToast({
               title: result.error,
               icon: 'none',
               duration: 2000
             })
           }
+          if (result.statusCode === 404) {
+            console.warn('[Request] 资源不存在(404):', options.url)
+          }
           reject(result)
         }
       },
       fail: (error) => {
+        // 网络失败也可重试
+        const retryCount = options.retry ?? DEFAULT_RETRY_COUNT
+        const canRetry = attempt < retryCount && !options.silent
+        if (canRetry) {
+          const delay = (options.retryDelay || DEFAULT_RETRY_DELAY) * Math.pow(2, attempt)
+          setTimeout(() => {
+            request(options, attempt + 1).then(resolve).catch(reject)
+          }, delay)
+          return
+        }
         const result = {
           success: false,
-          error: '网络请求失败',
+          error: '网络连接失败，请检查网络',
           statusCode: 0,
           raw: error
         }
         if (!options.silent) {
-          uni.showToast({
-            title: '网络连接失败',
-            icon: 'none',
-            duration: 2000
-          })
+          const now = Date.now()
+          if (now - lastNetworkErrorTime > NETWORK_ERROR_INTERVAL) {
+            lastNetworkErrorTime = now
+            uni.showToast({
+              title: '网络连接失败，请检查网络',
+              icon: 'none',
+              duration: 2000
+            })
+          }
         }
         reject(result)
       }
@@ -218,6 +261,11 @@ export function put(url, data, options = {}) {
   return request({ url, method: 'PUT', data, ...options })
 }
 
+// PATCH请求
+export function patch(url, data, options = {}) {
+  return request({ url, method: 'PATCH', data, ...options })
+}
+
 // DELETE请求
 export function del(url, data, options = {}) {
   return request({ url, method: 'DELETE', data, ...options })
@@ -227,6 +275,7 @@ export default {
   get,
   post,
   put,
+  patch,
   del,
   setToken,
   clearToken,

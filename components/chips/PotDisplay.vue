@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="pot-display" :class="potSize">
     <!-- 底池标签 -->
     <view class="pot-label">
@@ -118,18 +118,18 @@ export default {
 }
 
 .size-sm {
-  .pot-label .label-text { font-size: 18rpx; }
-  .amount-number { font-size: 32rpx; }
+  .pot-label .label-text { font-size: var(--text-lg); }
+  .amount-number { font-size: var(--text-2xl); }
 }
 
 .size-md {
-  .pot-label .label-text { font-size: 22rpx; }
-  .amount-number { font-size: 48rpx; }
+  .pot-label .label-text { font-size: var(--text-lg); }
+  .amount-number { font-size: var(--text-3xl); }
 }
 
 .size-lg {
-  .pot-label .label-text { font-size: 26rpx; }
-  .amount-number { font-size: 64rpx; }
+  .pot-label .label-text { font-size: var(--text-xl); }
+  .amount-number { font-size: var(--text-3xl); }
 }
 
 /* 底池标签 */
@@ -140,7 +140,7 @@ export default {
 }
 
 .label-text {
-  font-size: 22rpx;
+  font-size: var(--text-lg);
   color: rgba(255, 255, 255, 0.7);
   letter-spacing: 4rpx;
 }
@@ -158,20 +158,20 @@ export default {
 .amount-number {
   font-family: Georgia, 'Times New Roman', serif;
   font-weight: 300;
-  color: #FFD700;
+  color: var(--color-gold);
   letter-spacing: -2rpx;
   text-shadow: 0 0 20rpx rgba(255, 215, 0, 0.5);
   transition: transform 0.1s ease;
 }
 
 .amount-updating {
-  animation: amountPulse 0.5s ease;
+  animation: amountPulse3D 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@keyframes amountPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+@keyframes amountPulse3D {
+  0% { transform: perspective(600px) translateZ(0) scale(1); }
+  40% { transform: perspective(600px) translateZ(20px) scale(1.15); text-shadow: 0 0 30rpx rgba(255, 215, 0, 0.8); }
+  100% { transform: perspective(600px) translateZ(0) scale(1); }
 }
 
 /* 筹码装饰 */

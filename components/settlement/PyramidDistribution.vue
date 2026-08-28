@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="pyramid-distribution" :class="{ 'pyramid-active': active }">
     <!-- 倒金字塔主体 -->
     <view class="pyramid-container">
@@ -232,6 +232,7 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
+  perspective: 800px;
 }
 
 /* 塔尖 */
@@ -260,13 +261,13 @@ export default {
 }
 
 .tip-label {
-  font-size: 20rpx;
+  font-size: var(--text-lg);
   color: rgba(255, 255, 255, 0.6);
   letter-spacing: 4rpx;
 }
 
 .tip-value {
-  font-size: 40rpx;
+  font-size: var(--text-3xl);
   font-weight: 700;
   font-family: Georgia, serif;
 }
@@ -279,7 +280,7 @@ export default {
   transform: translate(-50%, -50%);
   width: 40rpx;
   height: 40rpx;
-  background: radial-gradient(circle, #FFD700 0%, #FFA500 50%, transparent 100%);
+  background: radial-gradient(circle, var(--color-gold) 0%, var(--color-gold-dark) 50%, transparent 100%);
   border-radius: 50%;
   box-shadow: 0 0 20rpx rgba(255, 215, 0, 0.8);
   opacity: 0;
@@ -293,11 +294,11 @@ export default {
 @keyframes orbFall {
   0% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate(-50%, -50%) perspective(800px) translateZ(40px) scale(1.3);
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, 200rpx) scale(0.5);
+    transform: translate(-50%, 200rpx) perspective(800px) translateZ(-20px) scale(0.4);
   }
 }
 
@@ -309,6 +310,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+  transform-style: preserve-3d;
 }
 
 .pyramid-outline {
@@ -319,6 +321,8 @@ export default {
   border-right: 100rpx solid transparent;
   border-top: 120rpx solid rgba(255, 215, 0, 0.1);
   filter: drop-shadow(0 0 10rpx rgba(255, 215, 0, 0.3));
+  transform: rotateX(15deg);
+  transform-origin: center top;
 }
 
 /* 金色流体 */
@@ -339,7 +343,7 @@ export default {
   transform: translateX(-50%);
   width: 12rpx;
   height: 60%;
-  background: linear-gradient(180deg, #FFD700 0%, #FFA500 100%);
+  background: linear-gradient(180deg, var(--color-gold) 0%, var(--color-gold-dark) 100%);
   border-radius: 6rpx;
   box-shadow: 0 0 15rpx rgba(255, 215, 0, 0.8);
   animation: flowDown 0.4s ease-out forwards;
@@ -360,7 +364,7 @@ export default {
   top: 40%;
   width: 8rpx;
   height: 60%;
-  background: linear-gradient(180deg, #FFD700 0%, #FFA500 100%);
+  background: linear-gradient(180deg, var(--color-gold) 0%, var(--color-gold-dark) 100%);
   border-radius: 4rpx;
   box-shadow: 0 0 10rpx rgba(255, 215, 0, 0.6);
   animation: branchFlow 0.3s ease-out forwards;
@@ -406,7 +410,7 @@ export default {
 .split-glow {
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle, #FFD700 0%, transparent 70%);
+  background: radial-gradient(circle, var(--color-gold) 0%, transparent 70%);
   border-radius: 50%;
   animation: splitPulse 0.5s ease-out;
 }
@@ -438,12 +442,21 @@ export default {
 }
 
 .card-active {
-  animation: cardAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: cardAppear3D 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-@keyframes cardAppear {
-  0% { opacity: 0; transform: translateY(20rpx) scale(0.9); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+@keyframes cardAppear3D {
+  0% {
+    opacity: 0;
+    transform: perspective(800px) rotateX(-60deg) translateY(30rpx) scale(0.8);
+  }
+  60% {
+    transform: perspective(800px) rotateX(8deg) translateY(-5rpx) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(800px) rotateX(0) translateY(0) scale(1);
+  }
 }
 
 .card-inflow {
@@ -476,7 +489,7 @@ export default {
 }
 
 .card-name {
-  font-size: 20rpx;
+  font-size: var(--text-lg);
   color: rgba(255, 255, 255, 0.8);
   font-weight: 600;
 }
@@ -488,13 +501,13 @@ export default {
 }
 
 .amount-value {
-  font-size: 32rpx;
+  font-size: var(--text-2xl);
   font-weight: 700;
   font-family: Georgia, serif;
 }
 
 .amount-percent {
-  font-size: 18rpx;
+  font-size: var(--text-lg);
   color: rgba(255, 255, 255, 0.5);
 }
 
@@ -508,8 +521,8 @@ export default {
 }
 
 .badge-text {
-  font-size: 14rpx;
-  color: #FFD700;
+  font-size: var(--text-sm);
+  color: var(--color-gold);
 }
 
 /* 守恒等式 */
@@ -527,7 +540,7 @@ export default {
 }
 
 .equation-text {
-  font-size: 24rpx;
+  font-size: var(--text-xl);
   color: rgba(255, 215, 0, 0.7);
   font-family: "STKaiti", "KaiTi", serif;
   letter-spacing: 2rpx;
@@ -536,7 +549,7 @@ export default {
 
 /* 金色文字 */
 .gold-text {
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  background: linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-dark) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

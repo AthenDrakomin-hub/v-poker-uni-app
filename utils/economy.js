@@ -30,7 +30,7 @@ export const ECONOMY_CONFIG = {
     L2: {
       level: 2,
       name: '总代理',
-      role: 'general_agent',
+      role: 'top_agent',
       // 基础分成比例（占抽水总额的0.5/3 ≈ 流水的0.5%）
       baseShare: 0.5 / 3,
     },
@@ -182,7 +182,7 @@ export function formatDistributionForDisplay(distributionResult) {
 function getRoleColor(role) {
   const colors = {
     agent: '#FFBF00',        // 代理 - 琥珀金
-    general_agent: '#6B46C1', // 总代理 - 暗夜紫
+    top_agent: '#6B46C1', // 总代理 - 暗夜紫
     platform: '#00D4FF',      // 平台 - 青色
   }
   return colors[role] || '#888'

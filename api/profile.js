@@ -1,16 +1,21 @@
 /**
  * V-Poker 个人资料 API
  */
-import { get, put } from './request.js'
+import { get, post, put } from './request.js'
 
-// 获取个人资料
+// 获取个人资料（含游戏历史、战绩统计）
 export function getProfile() {
   return get('/api/profile')
 }
 
-// 更新个人资料
-export function updateProfile(data) {
-  return put('/api/profile', data)
+// 获取当前用户按房间聚合的历史战绩
+export function getMyGameHistory(params) {
+  return get('/api/profile/room-history', params)
+}
+
+// 获取当前用户在指定房间的逐局记录
+export function getMyRoomRounds(roomNo, params) {
+  return get(`/api/profile/room-history/${roomNo}/rounds`, params)
 }
 
 // 修改昵称
@@ -19,37 +24,26 @@ export function updateNickname(nickname) {
 }
 
 // 修改头像
-export function updateAvatar(avatarUrl) {
-  return put('/api/profile/avatar', { avatar: avatarUrl })
+export function updateAvatar(avatar) {
+  return put('/api/profile/avatar', { avatar })
 }
 
-// 获取我的筹码记录
-export function getMyPointsHistory(params) {
-  return get('/api/profile/points-history', params)
+// 获取登录设备列表
+export function getMyDevices() {
+  return get('/api/profile/devices')
 }
 
-// 获取我的游戏记录
-export function getMyGameHistory(params) {
-  return get('/api/profile/game-history', params)
-}
-
-// 绑定手机号
-export function bindPhone(phone, code) {
-  return put('/api/profile/bind-phone', { phone, code })
-}
-
-// 发送验证码
-export function sendVerifyCode(phone) {
-  return post('/api/profile/send-code', { phone })
+// 强制修改密码（首次登录）
+export function forceChangePassword() {
+  return post('/api/profile/force-change-password')
 }
 
 export default {
   getProfile,
-  updateProfile,
+  getMyGameHistory,
+  getMyRoomRounds,
   updateNickname,
   updateAvatar,
-  getMyPointsHistory,
-  getMyGameHistory,
-  bindPhone,
-  sendVerifyCode
+  getMyDevices,
+  forceChangePassword
 }

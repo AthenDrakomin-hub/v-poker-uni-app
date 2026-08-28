@@ -105,7 +105,7 @@ export function formatRole(role) {
   const map = {
     player: '玩家',
     agent: '代理',
-    general_agent: '总代理',
+    top_agent: '总代理',
     admin: '管理员',
     customer_service: '客服',
   }

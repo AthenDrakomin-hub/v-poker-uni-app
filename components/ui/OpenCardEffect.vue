@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view v-if="active" class="open-card-effect" :class="effectClass">
     <!-- 金光炸裂（紫禁之巅） -->
     <view v-if="effectType === 'gold_burst'" class="gold-burst-effect">
@@ -68,7 +68,7 @@ export default {
     // 主题颜色
     color: {
       type: String,
-      default: '#FFD700'
+      default: 'var(--color-gold)'
     },
     // 是否震屏
     screenShake: {
@@ -190,7 +190,7 @@ export default {
   transform: translate(-50%, -50%);
   width: 100rpx;
   height: 100rpx;
-  background: radial-gradient(circle, #FFD700 0%, #FFA500 50%, transparent 100%);
+  background: radial-gradient(circle, var(--color-gold) 0%, var(--color-gold-dark) 50%, transparent 100%);
   border-radius: 50%;
   animation: burstCenter 0.6s ease-out forwards;
 }

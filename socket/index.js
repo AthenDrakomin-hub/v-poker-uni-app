@@ -1,6 +1,14 @@
 /**
  * V-Poker WebSocket 封装
- * 支持 Socket.io 协议，兼容 uni-app APP/H5
+ * Socket.io v4 协议 over WebSocket，兼容 uni-app APP/H5
+ *
+ * 协议流程：
+ *   1. WebSocket 连接 ws://host/socket.io/?EIO=4&transport=websocket
+ *   2. 服务端发 Engine.IO open 包: 0{"sid":"...","pingInterval":25000,"pingTimeout":60000}
+ *   3. 客户端发 Socket.IO 连接包(带auth): 40{"token":"xxx"}
+ *   4. 服务端发连接确认: 40 或 40{...}
+ *   5. 事件: 42["event_name", data]
+ *   6. 心跳: 服务端发 2(ping)，客户端回 3(pong)
  */
 import { API_CONFIG } from '../api/config.js'
 
@@ -10,11 +18,8 @@ let reconnectTimer = null
 let reconnectAttempts = 0
 const MAX_RECONNECT_ATTEMPTS = 10
 
-// 事件监听器存储
-const eventListeners = {}
-
 /**
- * 获取Token
+ * 获取 Token
  */
 function getToken() {
   try {
@@ -25,24 +30,18 @@ function getToken() {
 }
 
 /**
- * 创建Socket连接
+ * 创建 WebSocket 连接
+ * Socket.io 挂在根路径 /socket.io，不在 /api 下
  */
 function createSocket() {
-  const token = getToken()
-  const wsUrl = API_CONFIG.baseUrl.replace(/^http/, 'ws') + '/socket.io/?EIO=4&transport=websocket'
+  const wsBase = API_CONFIG.baseUrl.replace('/api', '').replace(/^http/, 'ws')
+  const wsUrl = wsBase + '/socket.io/?EIO=4&transport=websocket'
 
-  // 使用 uni.connectSocket
-  const socketTask = uni.connectSocket({
+  return uni.connectSocket({
     url: wsUrl,
-    header: {
-      'Authorization': token ? 'Bearer ' + token : '',
-      'x-vpoker-token': token,
-    },
     protocols: [],
     complete: () => {}
   })
-
-  return socketTask
 }
 
 /**
@@ -51,34 +50,33 @@ function createSocket() {
 class SocketManager {
   constructor() {
     this.socketTask = null
-    this.connected = false
+    this.connected = false       // Socket.IO 握手完成标志
     this.socketId = null
     this.heartbeatTimer = null
     this.eventHandlers = {}
+    this._manualDisconnect = false
+    this._connectResolve = null
+    this._connectReject = null
   }
 
   /**
-   * 连接
+   * 连接（等待 Socket.IO 握手完成后 resolve）
    */
   connect() {
     if (this.connected) {
-      console.log('[Socket] 已连接')
       return Promise.resolve()
     }
+    this._manualDisconnect = false
 
     return new Promise((resolve, reject) => {
+      this._connectResolve = resolve
+      this._connectReject = reject
+
       try {
         this.socketTask = createSocket()
 
-        // 连接成功
-        this.socketTask.onOpen(() => {
-          console.log('[Socket] 连接成功')
-          this.connected = true
-          reconnectAttempts = 0
-          this.startHeartbeat()
-          this.emit('connect', { socketId: this.socketId })
-          resolve()
-        })
+        // WebSocket 已开 — 等待 Engine.IO open 包（0包），不设 connected
+        this.socketTask.onOpen(() => {})
 
         // 接收消息
         this.socketTask.onMessage((res) => {
@@ -87,19 +85,32 @@ class SocketManager {
 
         // 连接关闭
         this.socketTask.onClose(() => {
-          console.log('[Socket] 连接关闭')
           this.connected = false
           this.stopHeartbeat()
           this.emit('disconnect', {})
-          this.tryReconnect()
+
+          // 连接未建立就关闭，reject
+          if (this._connectReject) {
+            this._connectReject(new Error('Socket closed before handshake'))
+            this._connectReject = null
+            this._connectResolve = null
+          }
+
+          // 非主动断开则自动重连
+          if (!this._manualDisconnect) {
+            this.tryReconnect()
+          }
         })
 
         // 连接错误
         this.socketTask.onError((err) => {
           console.error('[Socket] 连接错误', err)
-          this.connected = false
           this.emit('error', err)
-          reject(err)
+          if (this._connectReject) {
+            this._connectReject(err)
+            this._connectReject = null
+            this._connectResolve = null
+          }
         })
 
       } catch (e) {
@@ -110,31 +121,59 @@ class SocketManager {
   }
 
   /**
-   * 处理消息
+   * 处理消息（Socket.IO v4 协议解析）
    */
   handleMessage(data) {
+    if (typeof data !== 'string') return
     try {
-      // Socket.io 协议解析
-      // 40 = 连接确认, 42 = 事件, 44 = 错误
-      if (typeof data === 'string') {
-        if (data.startsWith('40')) {
-          // 连接确认
-          const sidMatch = data.match(/"sid":"([^"]+)"/)
-          if (sidMatch) {
-            this.socketId = sidMatch[1]
-          }
-          this.emit('connect', { socketId: this.socketId })
-        } else if (data.startsWith('42')) {
-          // 事件消息
-          const jsonStr = data.substring(2)
-          const parsed = JSON.parse(jsonStr)
-          const eventName = parsed[0]
-          const eventData = parsed[1]
-          this.emit(eventName, eventData)
-        } else if (data.startsWith('2')) {
-          // Ping
-          this.send('3') // Pong
+      // Engine.IO open 包: 0{"sid":"...","pingInterval":25000,"pingTimeout":60000}
+      if (data.startsWith('0{')) {
+        const info = JSON.parse(data.substring(1))
+        this.socketId = info.sid
+        // 发送 Socket.IO namespace 连接包，带 auth token
+        // 后端从 socket.handshake.auth.token 读取
+        const token = getToken()
+        const connectPacket = token ? '40' + JSON.stringify({ token }) : '40'
+        this.send(connectPacket)
+        return
+      }
+
+      // Socket.IO 连接确认: 40 或 40{...}
+      if (data.startsWith('40')) {
+        const wasReconnect = reconnectAttempts > 0
+        this.connected = true
+        reconnectAttempts = 0
+        this.emit('connect', { socketId: this.socketId })
+        // 重连成功后额外 emit reconnect，让上层重新订阅房间事件
+        if (wasReconnect) {
+          this.emit('reconnect', { socketId: this.socketId })
         }
+        if (this._connectResolve) {
+          this._connectResolve()
+          this._connectResolve = null
+          this._connectReject = null
+        }
+        return
+      }
+
+      // 事件消息: 42["event_name", data]
+      if (data.startsWith('42')) {
+        const parsed = JSON.parse(data.substring(2))
+        const eventName = parsed[0]
+        const eventData = parsed[1]
+        this.emit(eventName, eventData)
+        return
+      }
+
+      // Engine.IO Ping: 2（服务端发起，客户端回 pong）
+      if (data === '2') {
+        this.send('3')
+        return
+      }
+
+      // Socket.IO 错误: 44
+      if (data.startsWith('44')) {
+        this.emit('error', { message: data.substring(2) })
       }
     } catch (e) {
       console.error('[Socket] 消息解析失败', e, data)
@@ -142,10 +181,10 @@ class SocketManager {
   }
 
   /**
-   * 发送消息
+   * 发送原始数据
    */
   send(data) {
-    if (!this.connected || !this.socketTask) {
+    if (!this.socketTask) {
       console.warn('[Socket] 未连接，无法发送')
       return false
     }
@@ -159,21 +198,24 @@ class SocketManager {
   }
 
   /**
-   * 发送事件
+   * 发送 Socket.IO 事件
    */
   emitEvent(eventName, data, callback) {
+    if (!this.connected) {
+      console.warn('[Socket] Socket.IO 未握手完成，无法发送事件:', eventName)
+      return false
+    }
     const message = '42' + JSON.stringify([eventName, data || {}])
     const result = this.send(message)
 
     if (callback && result) {
-      // 简单的ack机制（等待一次响应）
+      // 简单的 ack 机制（等待一次响应）
       const ackEvent = '__ack_' + eventName + '_' + Date.now()
       const handler = (res) => {
         this.off(ackEvent, handler)
         callback(res)
       }
       this.on(ackEvent, handler)
-      // 超时
       setTimeout(() => {
         this.off(ackEvent, handler)
       }, 10000)
@@ -221,20 +263,13 @@ class SocketManager {
   }
 
   /**
-   * 开始心跳
+   * 心跳（Socket.IO v4 由服务端发起 ping，客户端只需回 pong）
+   * 保留空实现以兼容旧调用
    */
   startHeartbeat() {
     this.stopHeartbeat()
-    this.heartbeatTimer = setInterval(() => {
-      if (this.connected) {
-        this.send('2') // Ping
-      }
-    }, 25000)
   }
 
-  /**
-   * 停止心跳
-   */
   stopHeartbeat() {
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer)
@@ -243,37 +278,34 @@ class SocketManager {
   }
 
   /**
-   * 尝试重连
+   * 尝试重连（指数退避）
    */
   tryReconnect() {
+    if (this._manualDisconnect) return
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      console.log('[Socket] 达到最大重连次数')
       this.emit('reconnect_failed', {})
       return
     }
-
     const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
     reconnectAttempts++
-
-    console.log(`[Socket] ${delay}ms后尝试第${reconnectAttempts}次重连`)
-
     reconnectTimer = setTimeout(() => {
-      this.connect().catch(() => {
-        // 重连失败会自动触发下一次
-      })
+      this.connect().catch(() => {})
     }, delay)
   }
 
   /**
-   * 断开连接
+   * 主动断开连接（不触发自动重连）
    */
   disconnect() {
+    this._manualDisconnect = true
     this.stopHeartbeat()
     if (reconnectTimer) {
       clearTimeout(reconnectTimer)
       reconnectTimer = null
     }
     if (this.socketTask) {
+      // 发送 Socket.IO 断开包
+      try { this.send('41') } catch (e) {}
       this.socketTask.close()
       this.socketTask = null
     }
@@ -283,7 +315,7 @@ class SocketManager {
 }
 
 /**
- * 获取Socket单例
+ * 获取 Socket 单例
  */
 export function getSocket() {
   if (!socketInstance) {
@@ -293,14 +325,14 @@ export function getSocket() {
 }
 
 /**
- * 连接Socket
+ * 连接 Socket
  */
 export function connectSocket() {
   return getSocket().connect()
 }
 
 /**
- * 断开Socket
+ * 断开 Socket
  */
 export function disconnectSocket() {
   getSocket().disconnect()

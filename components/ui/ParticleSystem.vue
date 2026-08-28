@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <canvas
     v-if="enabled"
     class="particle-canvas"
@@ -18,7 +18,7 @@ export default {
       default: () => ({
         type: 'incense',
         count: 15,
-        color: '#FFA500',
+        color: 'var(--color-gold-dark)',
         size: { min: 2, max: 5 },
         speed: { min: 0.3, max: 0.8 },
         direction: 'up',
